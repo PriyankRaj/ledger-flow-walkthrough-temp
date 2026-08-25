@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ledger Flow Walkthrough — Current vs. Proposed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#eef1f5;
+    --surface:#ffffff;
+    --surface-2:#e3e9ef;
+    --surface-3:#d7dfe7;
+    --border:#c7d0da;
+    --border-soft:#dbe1e8;
+    --text:#161b22;
+    --text-muted:#5a6472;
+    --text-faint:#8b95a1;
+    --accent:#215d72;
+    --accent-soft:#dbe9ee;
+    --accent-ink:#0f3b48;
+    --danger:#b8382a;
+    --danger-soft:#f8e2de;
+    --info:#2a72ad;
+    --info-soft:#dfeaf5;
+    --success:#2f8a5b;
+    --success-soft:#deefe4;
+    --warning:#a8710f;
+    --warning-soft:#f5e9d4;
+    --hyp:#7548ad;
+    --hyp-soft:#ece2f7;
+    --shadow: 0 1px 2px rgba(20,26,33,0.06), 0 8px 24px -12px rgba(20,26,33,0.18);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1217;
+      --surface:#161c24;
+      --surface-2:#1d2530;
+      --surface-3:#26303d;
+      --border:#2c3846;
+      --border-soft:#212a35;
+      --text:#e7ebf0;
+      --text-muted:#98a4b2;
+      --text-faint:#6b7684;
+      --accent:#6fb2cc;
+      --accent-soft:#1c333b;
+      --accent-ink:#cfeaf3;
+      --danger:#e07a6c;
+      --danger-soft:#3a211f;
+      --info:#6fa8dd;
+      --info-soft:#1c2c3d;
+      --success:#6fc79a;
+      --success-soft:#1b3126;
+      --warning:#dba957;
+      --warning-soft:#33291a;
+      --hyp:#b795e0;
+      --hyp-soft:#2a2036;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  code, .mono{ font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .tab-nums{ font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+
+  a{ color:var(--accent); }
+  button{ font-family:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .app{
+    max-width:1320px;
+    margin:0 auto;
+    padding:20px 20px 56px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  /* ---------- header ---------- */
+  header.top{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    padding-bottom:6px;
+  }
+  .brand{ display:flex; flex-direction:column; gap:4px; }
+  .brand .eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+  }
+  h1{
+    margin:0;
+    font-size:clamp(22px, 3vw, 30px);
+    font-weight:700;
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+  }
+  .subtitle{ color:var(--text-muted); font-size:14px; max-width:66ch; }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 14px;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .legend .item{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .legend .swatch{ width:11px; height:11px; border-radius:3px; flex:none; }
+  .sw-idle{ background:var(--surface-3); border:1px solid var(--border); }
+  .sw-read{ background:var(--info); }
+  .sw-lock{ background:var(--danger); }
+  .sw-write{ background:var(--success); }
+  .sw-hyp{ background:transparent; border:1.5px dashed var(--hyp); }
+
+  /* ---------- mode switch ---------- */
+  .modebar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 14px; box-shadow:var(--shadow);
+  }
+  .modebar .mlabel{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-faint); margin-right:2px; }
+  .mode-toggle{ display:inline-flex; border:1px solid var(--border); border-radius:999px; padding:3px; background:var(--surface-2); gap:2px; }
+  .mode-toggle button{
+    appearance:none; border:none; background:transparent; color:var(--text-muted);
+    font-size:13px; font-weight:600; padding:7px 16px; border-radius:999px; cursor:pointer;
+    transition:background 150ms ease, color 150ms ease;
+  }
+  .mode-toggle button.active.current{ background:var(--danger); color:#fff; }
+  .mode-toggle button.active.proposed{ background:var(--success); color:#fff; }
+  .mode-note{ font-size:12.5px; color:var(--text-muted); flex:1; min-width:200px; }
+  .mode-pill{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:700; letter-spacing:0.04em;
+    padding:3px 9px; border-radius:999px; border:1px solid;
+  }
+  .mode-pill.current{ color:var(--danger); border-color:var(--danger); background:var(--danger-soft); }
+  .mode-pill.proposed{ color:var(--success); border-color:var(--success); background:var(--success-soft); }
+
+  /* ---------- progress + section tracker ---------- */
+  .progress-track{
+    height:3px;
+    width:100%;
+    background:var(--border-soft);
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:var(--accent);
+    transition:width 300ms ease;
+  }
+
+  .tracker{
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:1fr;
+    gap:6px;
+  }
+  .tracker button{
+    appearance:none;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-muted);
+    border-radius:8px;
+    padding:8px 9px;
+    text-align:left;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    transition:border-color 150ms ease, background 150ms ease, color 150ms ease;
+  }
+  .tracker button .n{ font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--text-faint); }
+  .tracker button .t{ font-size:11.5px; font-weight:600; color:var(--text); line-height:1.2; }
+  .tracker button:hover{ border-color:var(--accent); }
+  .tracker button.active{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+  }
+  .tracker button.active .n{ color:var(--accent); }
+  .tracker button.done{ opacity:0.72; }
+
+  /* ---------- stage layout ---------- */
+  .stage{
+    display:grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap:16px;
+    align-items:start;
+  }
+  @media (max-width: 880px){
+    .stage{ grid-template-columns: 1fr; }
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+
+  /* narrator */
+  .narrator{ padding:18px; display:flex; flex-direction:column; gap:14px; position:sticky; top:16px; min-width:0; }
+  .flow-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .flow-tag{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+  }
+  .flow-tag.moneyin{ color:var(--success); border-color:var(--success); }
+  .flow-tag.moneyout{ color:var(--danger); border-color:var(--danger); }
+  .flow-tag.fees{ color:var(--hyp); border-color:var(--hyp); }
+  .flow-tag.conversion{ color:var(--info); border-color:var(--info); }
+  .flow-tag.overview{ color:var(--accent); border-color:var(--accent); }
+
+  .evidence-badge{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:0.04em;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    color:var(--text-faint);
+  }
+  .evidence-badge.real{ color:var(--success); border-color:var(--success); background:var(--success-soft); }
+  .evidence-badge.illustrative{ color:var(--text-faint); border-color:var(--border); }
+
+  .endpoint{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px;
+    background:var(--surface-2);
+    border:1px solid var(--border-soft);
+    border-radius:7px;
+    padding:5px 9px;
+    color:var(--text);
+  }
+  .endpoint .m{ color:var(--accent); font-weight:700; margin-right:6px; }
+
+  .narrator h2{ margin:0; font-size:18px; font-weight:700; letter-spacing:-0.01em; }
+  .step-desc{ font-size:14.5px; line-height:1.55; color:var(--text); }
+  .hyp-flag{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--hyp); background:var(--hyp-soft); border:1px dashed var(--hyp);
+    border-radius:6px; padding:3px 7px; margin-bottom:6px;
+  }
+  .real-flag{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--success); background:var(--success-soft); border:1px solid var(--success);
+    border-radius:6px; padding:3px 7px; margin-bottom:6px;
+  }
+  .fix-flag{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--success); background:var(--success-soft); border:1px solid var(--success);
+    border-radius:6px; padding:3px 7px; margin-bottom:6px;
+  }
+
+  .sql-box{
+    background:var(--accent-ink);
+    color:#d8ecf1;
+    border-radius:8px;
+    padding:11px 12px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:12px;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  .queue{ display:flex; flex-direction:column; gap:6px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:8px; padding:10px; }
+  .queue .qlabel{ font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-faint); }
+  .queue-row{ display:flex; align-items:center; gap:8px; }
+  .queue-chip{
+    flex:1; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+    padding:6px 9px; border-radius:6px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text-muted);
+    transition:border-color 200ms ease, background 200ms ease, color 200ms ease;
+  }
+  .queue-chip .day{ color:var(--text-faint); }
+  .queue-chip.processing{ border-color:var(--warning); background:var(--warning-soft); color:var(--text); }
+  .queue-chip.processing .status{ color:var(--warning); font-weight:700; }
+  .queue-chip.done{ border-color:var(--success); color:var(--text-faint); }
+  .queue-chip.done .status{ color:var(--success); }
+  .queue-chip.queued .status{ color:var(--text-faint); }
+
+  .substeps{ display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+  .substeps .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--border);
+    transition:background 150ms ease, transform 150ms ease;
+  }
+  .substeps .dot.on{ background:var(--accent); transform:scale(1.3); }
+  .substeps .label{ font-size:11px; color:var(--text-faint); font-family:"IBM Plex Mono",monospace; margin-left:4px; }
+
+  .transport{ display:flex; align-items:center; gap:8px; margin-top:2px; }
+  .btn{
+    appearance:none; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--text); border-radius:8px; padding:8px 13px; font-size:13px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    transition:background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+  }
+  .btn:hover:not(:disabled){ border-color:var(--accent); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover:not(:disabled){ filter:brightness(1.06); }
+  .spacer{ flex:1; }
+
+  /* db viewport */
+  .viewport{ display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .table-card{ padding:0; overflow:hidden; }
+  .table-card.newtable{ border-color:var(--success); box-shadow:0 0 0 1px var(--success), var(--shadow); }
+  .table-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border-soft);
+    background:var(--surface-2);
+  }
+  .table-head .name{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; color:var(--text);
+  }
+  .table-head .name .newbadge{
+    font-size:9.5px; font-weight:700; letter-spacing:0.05em; color:#fff; background:var(--success);
+    border-radius:5px; padding:1px 6px; margin-left:8px; vertical-align:middle;
+  }
+  .table-head .count{ font-size:11px; color:var(--text-faint); font-family:"IBM Plex Mono",monospace; }
+  .table-body{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:max-content; }
+  thead th{
+    text-align:left; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--text-faint); font-weight:600; padding:7px 12px; border-bottom:1px solid var(--border-soft);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:8px 12px; font-size:12.5px; border-bottom:1px solid var(--border-soft);
+    white-space:nowrap; color:var(--text);
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody td.idcol{ font-family:"IBM Plex Mono",monospace; font-weight:600; }
+  tbody td.num{ font-family:"IBM Plex Mono",monospace; text-align:right; font-variant-numeric:tabular-nums; }
+  tbody td.nullval{ color:var(--text-faint); font-style:italic; }
+  .empty-row td{ color:var(--text-faint); font-style:italic; padding:12px; }
+
+  tbody tr.row-idle{ background:transparent; }
+  tbody tr.row-read{ background:var(--info-soft); animation:pulseIn 900ms ease; }
+  tbody tr.row-insert{ background:var(--success-soft); animation:pulseIn 900ms ease; }
+  tbody tr.row-update{ background:var(--warning-soft); animation:pulseIn 900ms ease; }
+  tbody tr.row-atomic{ background:var(--success-soft); animation:pulseIn 900ms ease; }
+  tbody tr.row-locked{ background:var(--danger-soft); }
+  tbody tr.row-hyplock{ background:var(--hyp-soft); }
+  @keyframes pulseIn{ 0%{ filter:brightness(1.35); } 100%{ filter:brightness(1); } }
+
+  .badge{
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.04em; padding:2px 7px; border-radius:5px;
+  }
+  .badge.lock{ background:var(--danger); color:#fff; }
+  .badge.hyp{ background:transparent; border:1.3px dashed var(--hyp); color:var(--hyp); }
+  .badge.atomic{ background:var(--success); color:#fff; }
+
+  /* summary view */
+  .summary-grid{ display:flex; flex-direction:column; gap:18px; }
+  .flow-timeline{ display:flex; flex-direction:column; gap:8px; }
+  .flow-timeline .head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+  .flow-timeline .head .name{ font-weight:700; font-size:13.5px; }
+  .flow-timeline .head .stat{ font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--text-muted); }
+  .track{
+    display:flex; height:34px; border-radius:8px; overflow:hidden; border:1px solid var(--border-soft);
+  }
+  .seg{
+    display:flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:700; letter-spacing:0.03em;
+    color:var(--text-muted); background:var(--surface-2); border-right:1px solid var(--border-soft);
+    padding:0 6px; text-align:center;
+  }
+  .seg:last-child{ border-right:none; }
+  .seg.locked{ background:var(--danger); color:#fff; }
+  .seg.atomicseg{ background:var(--success); color:#fff; }
+  .seg.hyplocked{
+    background:repeating-linear-gradient(45deg, var(--hyp-soft), var(--hyp-soft) 6px, var(--surface-2) 6px, var(--surface-2) 12px);
+    color:var(--hyp); border:1.5px dashed var(--hyp);
+  }
+  .fix-list{ display:flex; flex-direction:column; gap:8px; }
+  .fix-item{
+    display:flex; gap:10px; align-items:flex-start; padding:10px 12px;
+    border:1px solid var(--border-soft); border-radius:8px; background:var(--surface-2);
+  }
+  .fix-item .icon{ font-family:"IBM Plex Mono",monospace; font-weight:700; color:var(--accent); }
+  .fix-item .body b{ font-size:13px; }
+  .fix-item .body p{ margin:2px 0 0; font-size:12.5px; color:var(--text-muted); line-height:1.5; }
+
+  footer.foot{
+    text-align:center; font-size:11.5px; color:var(--text-faint); padding-top:8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Xendit trial — ledger scaling · local walkthrough</span>
+      <h1>Ledger Flow Walkthrough</h1>
+      <p class="subtitle">Toggle between the <b>current</b> schema (account lock, running-balance <code>ledger_line</code>) and the <b>proposed</b> schema (append-only <code>ledger_line</code> + new <code>ledger_balance</code> table, atomic updates instead of locks) — same accounts, same transactions, same amounts, so the DB-level difference is directly visible.</p>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span class="item"><span class="swatch sw-idle"></span>idle</span>
+      <span class="item"><span class="swatch sw-read"></span>read</span>
+      <span class="item"><span class="swatch sw-write"></span>insert / update / atomic</span>
+      <span class="item"><span class="swatch sw-lock"></span>locked</span>
+      <span class="item"><span class="swatch sw-hyp"></span>presumed / hypothetical replay</span>
+    </div>
+  </header>
+
+  <div class="modebar">
+    <span class="mlabel">Schema version</span>
+    <div class="mode-toggle" id="modeToggle">
+      <button class="current" data-mode="current">Current (as-is)</button>
+      <button class="proposed" data-mode="proposed">Proposed (target state)</button>
+    </div>
+    <span class="mode-note" id="modeNote"></span>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <nav class="tracker" id="tracker"></nav>
+
+  <main class="stage" id="stage"></main>
+
+  <footer class="foot" id="footNote"></footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var NA = '— (not shown in dashboard UI)';
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  // ============================================================
+  // Shared batch-queue snapshots (same scenario in both modes)
+  // ============================================================
+  var Q1 = [{id:'TXN-PAYIN-01', day:'Fri', state:'queued'}, {id:'TXN-PAYIN-02', day:'Sat', state:'queued'}];
+  var Q2 = [{id:'TXN-PAYIN-01', day:'Fri', state:'processing'}, {id:'TXN-PAYIN-02', day:'Sat', state:'queued'}];
+  var Q3 = [{id:'TXN-PAYIN-01', day:'Fri', state:'done'}, {id:'TXN-PAYIN-02', day:'Sat', state:'queued'}];
+  var Q4 = [{id:'TXN-PAYIN-01', day:'Fri', state:'done'}, {id:'TXN-PAYIN-02', day:'Sat', state:'processing'}];
+  var Q5 = [{id:'TXN-PAYIN-01', day:'Fri', state:'done'}, {id:'TXN-PAYIN-02', day:'Sat', state:'done'}];
+
+  // ============================================================
+  // SECTIONS (identical shape/titles for both modes)
+  // ============================================================
+  function makeSections(){
+    return [
+      {title:'Starting State', flow:'overview', flowLabel:'Overview', endpoint:null, evidence:'illustrative'},
+      {title:'Money-In — Create', flow:'moneyin', flowLabel:'Money-In', endpoint:{m:'POST', p:'/api/transactions'}, evidence:'illustrative'},
+      {title:'Money-In — Settle', flow:'moneyin', flowLabel:'Money-In', endpoint:{m:'BATCH', p:'daily cutoff / micro-batch'}, evidence:'illustrative'},
+      {title:'Money-Out — Create', flow:'moneyout', flowLabel:'Money-Out', endpoint:{m:'POST', p:'/api/transactions'}, evidence:'illustrative'},
+      {title:'Money-Out — Settle', flow:'moneyout', flowLabel:'Money-Out', endpoint:{m:'PATCH', p:'/api/transactions/{id}'}, evidence:'illustrative'},
+      {title:'Fee — same account, real data', flow:'fees', flowLabel:'Fee', endpoint:{m:'—', p:'observed via Balance History'}, evidence:'real'},
+      {title:'Conversion — real data', flow:'conversion', flowLabel:'Conversion', endpoint:{m:'POST', p:'/conversions'}, evidence:'real'},
+      {title:'Summary', flow:'overview', flowLabel:'Overview', endpoint:null, evidence:'illustrative'}
+    ];
+  }
+
+  // ============================================================
+  // TABLE DEFS
+  // ============================================================
+  var ACCOUNT_COLS = [
+    {k:'id', label:'ID', cls:'idcol'},
+    {k:'business_id', label:'Business ID'},
+    {k:'currency', label:'Currency'},
+    {k:'type', label:'Type'},
+    {k:'created', label:'Created'}
+  ];
+  var TXN_COLS = [
+    {k:'id', label:'ID', cls:'idcol'},
+    {k:'ledger_account_id', label:'Ledger Acct ID'},
+    {k:'type', label:'Type'},
+    {k:'currency', label:'Currency'},
+    {k:'amount', label:'Amount', cls:'num'},
+    {k:'status', label:'Status'},
+    {k:'business_id', label:'Business ID'},
+    {k:'settlement_date', label:'Settlement Date'},
+    {k:'created', label:'Created'},
+    {k:'updated', label:'Updated'},
+    {k:'settled_at', label:'Settled At'},
+    {k:'settlement_status', label:'Settlement Status'}
+  ];
+  var FEE_COLS = [
+    {k:'id', label:'ID', cls:'idcol'},
+    {k:'transaction_id', label:'Transaction ID'},
+    {k:'ledger_line_id', label:'Ledger Line ID'},
+    {k:'status', label:'Status'},
+    {k:'amount', label:'Amount', cls:'num'},
+    {k:'business_id', label:'Business ID'},
+    {k:'created', label:'Created'},
+    {k:'billing_currency', label:'Billing Currency'},
+    {k:'updated', label:'Updated'},
+    {k:'type', label:'Type'}
+  ];
+
+  var CURRENT_TABLE_DEFS = [
+    { key:'account', name:'ledger_account', cols:ACCOUNT_COLS },
+    { key:'txn', name:'transaction', cols:TXN_COLS },
+    { key:'line', name:'ledger_line', cols:[
+        {k:'id', label:'ID', cls:'idcol'},
+        {k:'type', label:'Type'},
+        {k:'debit', label:'Debit', cls:'num'},
+        {k:'credit', label:'Credit', cls:'num'},
+        {k:'transaction_id', label:'Transaction ID'},
+        {k:'ledger_account_id', label:'Ledger Acct ID'},
+        {k:'business_id', label:'Business ID'},
+        {k:'sequence', label:'Sequence', cls:'num'},
+        {k:'created', label:'Created'},
+        {k:'amount', label:'Amount (legacy)', cls:'num'} ] },
+    { key:'fee', name:'fees', cols:FEE_COLS }
+  ];
+
+  var PROPOSED_TABLE_DEFS = [
+    { key:'account', name:'ledger_account', cols:ACCOUNT_COLS },
+    { key:'balance', name:'ledger_balance', cols:[
+        {k:'account_id', label:'Account ID', cls:'idcol'},
+        {k:'available', label:'Available', cls:'num'},
+        {k:'updated_at', label:'Updated At'} ], isNew:true },
+    { key:'txn', name:'transaction', cols:TXN_COLS },
+    { key:'line', name:'ledger_line', cols:[
+        {k:'id', label:'ID', cls:'idcol'},
+        {k:'type', label:'Type'},
+        {k:'debit', label:'Debit (delta)', cls:'num'},
+        {k:'credit', label:'Credit (delta)', cls:'num'},
+        {k:'transaction_id', label:'Transaction ID'},
+        {k:'ledger_account_id', label:'Ledger Acct ID'},
+        {k:'business_id', label:'Business ID'},
+        {k:'sequence', label:'Sequence', cls:'num'},
+        {k:'created', label:'Created'} ] },
+    { key:'fee', name:'fees', cols:FEE_COLS }
+  ];
+
+  // ============================================================
+  // CURRENT-STATE STEPS (unchanged mechanism: FOR UPDATE lock + running-balance ledger_line)
+  // ============================================================
+  var CURRENT_STEPS = [
+    { section:0,
+      desc:"Four ledger accounts exist before any of these calls run — every column shown is exactly what the schema PDF defines for ledger_account: id, business_id, currency, type, created. Confirmed with the tech team: type is Cash (money Xendit itself holds) or Liability (money owed out, e.g. to a merchant).",
+      sql:"-- baseline state, nothing executed yet",
+      ops:[
+        {t:'insert', table:'account', id:'acc_idr_liab', row:{id:'ACC-IDR-LIAB', business_id:'d290f1ee-6c54-4b01-90e6-…0851', currency:'IDR', type:'Liability', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_idr_cash', row:{id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', currency:'IDR', type:'Cash', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_php_liab', row:{id:'ACC-PHP-LIAB', business_id:'62940a13-d065-4cac-9b5a-…dfdb', currency:'PHP', type:'Liability', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_php_cash', row:{id:'ACC-PHP-CASH', business_id:'XENDIT_INTERNAL', currency:'PHP', type:'Cash', created:'2026-08-01 00:00'}}
+      ] },
+
+    { section:1, desc:"Look up the merchant's IDR Liability account.",
+      sql:"SELECT id FROM ledger_account\nWHERE business_id = ? AND currency = 'IDR';",
+      ops:[{t:'read', table:'account', id:'acc_idr_liab'}] },
+    { section:1, desc:"No lock — insert TXN-PAYIN-01 as PENDING (created Friday).",
+      sql:"INSERT INTO transaction (id, ledger_account_id, type, currency, amount, status, business_id, settlement_date, created, updated)\nVALUES ('TXN-PAYIN-01','ACC-IDR-LIAB','PAYIN','IDR',500000.00,'PENDING','d290f1ee-…','2026-08-24 23:00','2026-08-21 14:00','2026-08-21 14:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payin1', row:{id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-LIAB', type:'PAYIN', currency:'IDR', amount:'500,000.00', status:'PENDING', business_id:'d290f1ee-…0851', settlement_date:'2026-08-24 23:00', created:'2026-08-21 14:00', updated:'2026-08-21 14:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:1, desc:"Two days later, Saturday: the same merchant is paid again. Insert TXN-PAYIN-02 as PENDING — still no lock, still just sitting in the queue.",
+      sql:"INSERT INTO transaction (...)\nVALUES ('TXN-PAYIN-02','ACC-IDR-LIAB','PAYIN','IDR',200000.00,'PENDING','d290f1ee-…','2026-08-24 23:00','2026-08-22 10:00','2026-08-22 10:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payin2', row:{id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-LIAB', type:'PAYIN', currency:'IDR', amount:'200,000.00', status:'PENDING', business_id:'d290f1ee-…0851', settlement_date:'2026-08-24 23:00', created:'2026-08-22 10:00', updated:'2026-08-22 10:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:1, desc:"Both sit PENDING over the weekend. Nothing settles yet — that only happens in the next scheduled batch run.",
+      sql:"-- no settlement job has run yet", ops:[] },
+
+    { section:2, batchQueue:Q1,
+      desc:"Settlement is not a live call per transaction — it's a scheduled batch with a fixed daily cutoff (~11:00 PM). Real dashboard evidence: four separate payments created across three different days all landed in the very same 11:00 PM batch run — the weekend pileup the brief describes.",
+      sql:"-- scheduled job, fires once daily", ops:[] },
+    { section:2, batchQueue:Q2,
+      desc:"Batch picks up the first queued transaction: TXN-PAYIN-01, created Friday.",
+      sql:"SELECT * FROM transaction\nWHERE status='PENDING' ORDER BY created;",
+      ops:[{t:'read', table:'txn', id:'txn_payin1'}] },
+    { section:2, batchQueue:Q2,
+      desc:"Acquire exclusive lock on ACC-IDR-LIAB.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-IDR-LIAB' FOR UPDATE;",
+      ops:[{t:'lock', table:'account', id:'acc_idr_liab', label:'LOCK'}] },
+    { section:2, batchQueue:Q2,
+      desc:"Insert the credit line — merchant's new balance is 500,000.00, this account's first-ever event, so the running total equals this transaction's amount.",
+      sql:"INSERT INTO ledger_line (id, type, debit, credit, transaction_id, ledger_account_id, business_id, sequence, created, amount)\nVALUES ('LL-0001','PAYIN_CREDIT',0,500000.00,'TXN-PAYIN-01','ACC-IDR-LIAB','d290f1ee-…',10234,'2026-08-24 23:00',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll1', row:{id:'LL-0001', type:'PAYIN_CREDIT', debit:'0.00', credit:'500,000.00', transaction_id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-LIAB', business_id:'d290f1ee-…0851', sequence:'10234', created:'2026-08-24 23:00', amount:'null'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Insert the offsetting Cash-side line on ACC-IDR-CASH.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0002','PAYIN_CONTRA',500000.00,0,'TXN-PAYIN-01','ACC-IDR-CASH','XENDIT_INTERNAL',88123,'2026-08-24 23:00',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll2', row:{id:'LL-0002', type:'PAYIN_CONTRA', debit:'500,000.00', credit:'0.00', transaction_id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', sequence:'88123', created:'2026-08-24 23:00', amount:'null'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Mark TXN-PAYIN-01 settled — status, updated, settled_at and settlement_status all change together.",
+      sql:"UPDATE transaction\nSET status='COMPLETED', updated='2026-08-24 23:00', settled_at='2026-08-24 23:00', settlement_status='SETTLED'\nWHERE id='TXN-PAYIN-01';",
+      ops:[{t:'update', table:'txn', id:'txn_payin1', patch:{status:'COMPLETED', updated:'2026-08-24 23:00', settled_at:'2026-08-24 23:00', settlement_status:'SETTLED'}}] },
+    { section:2, batchQueue:Q3,
+      desc:"Release the lock — first transaction in the run is done.",
+      sql:"COMMIT;", ops:[{t:'unlock', table:'account', id:'acc_idr_liab'}] },
+    { section:2, batchQueue:Q4,
+      desc:"Same batch run, next in the queue: TXN-PAYIN-02, created a full day later on Saturday — but processed seconds after the first.",
+      sql:"SELECT * FROM transaction\nWHERE status='PENDING' ORDER BY created;",
+      ops:[{t:'read', table:'txn', id:'txn_payin2'}] },
+    { section:2, batchQueue:Q4,
+      desc:"Lock ACC-IDR-LIAB again — same account, second acquisition inside this one batch run.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-IDR-LIAB' FOR UPDATE;",
+      ops:[{t:'lock', table:'account', id:'acc_idr_liab', label:'LOCK'}] },
+    { section:2, batchQueue:Q4,
+      desc:"This is where the running-balance mechanic shows clearly: the new value is 700,000.00 — the account's total after both events — not 200,000.00, this transaction's own amount.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0003','PAYIN_CREDIT',0,700000.00,'TXN-PAYIN-02','ACC-IDR-LIAB','d290f1ee-…',10235,'2026-08-24 23:00:05',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll3', row:{id:'LL-0003', type:'PAYIN_CREDIT', debit:'0.00', credit:'700,000.00', transaction_id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-LIAB', business_id:'d290f1ee-…0851', sequence:'10235', created:'2026-08-24 23:00:05', amount:'null'}}] },
+    { section:2, batchQueue:Q4,
+      desc:"Insert the offsetting Cash-side line, also now at the cumulative 700,000.00.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0004','PAYIN_CONTRA',700000.00,0,'TXN-PAYIN-02','ACC-IDR-CASH','XENDIT_INTERNAL',88124,'2026-08-24 23:00:05',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll4', row:{id:'LL-0004', type:'PAYIN_CONTRA', debit:'700,000.00', credit:'0.00', transaction_id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', sequence:'88124', created:'2026-08-24 23:00:05', amount:'null'}}] },
+    { section:2, batchQueue:Q5,
+      desc:"Mark TXN-PAYIN-02 settled and release the lock. Two transactions, created two days apart, settled seconds apart — multiply this by a full weekend's volume and the batch window is exactly where lock contention concentrates.",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='2026-08-24 23:00:05', settled_at='2026-08-24 23:00:05', settlement_status='SETTLED'\nWHERE id='TXN-PAYIN-02';\nCOMMIT;",
+      ops:[{t:'update', table:'txn', id:'txn_payin2', patch:{status:'COMPLETED', updated:'2026-08-24 23:00:05', settled_at:'2026-08-24 23:00:05', settlement_status:'SETTLED'}}, {t:'unlock', table:'account', id:'acc_idr_liab'}] },
+
+    { section:3, desc:"Look up the merchant's PHP Liability account for this payout.",
+      sql:"SELECT id FROM ledger_account\nWHERE business_id = ? AND currency = 'PHP';",
+      ops:[{t:'read', table:'account', id:'acc_php_liab'}] },
+    { section:3, desc:"Acquire an exclusive lock on ACC-PHP-LIAB — LOCK #1. Unlike Money-In, Money-Out locks the account right here, at creation, to hold funds.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-PHP-LIAB' FOR UPDATE;",
+      ops:[{t:'lock', table:'account', id:'acc_php_liab', label:'LOCK #1'}] },
+    { section:3, desc:"Check available balance covers 1,500.12 PHP and reserve it, while still holding the row.",
+      sql:"-- balance check happens while the row is locked", ops:[] },
+    { section:3, desc:"Insert the transaction as PENDING.",
+      sql:"INSERT INTO transaction (...)\nVALUES ('TXN-PAYOUT-01','ACC-PHP-LIAB','PAYOUT','PHP',1500.12,'PENDING','62940a13-…','2026-08-24 11:06','2026-08-24 11:00','2026-08-24 11:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payout', row:{id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-LIAB', type:'PAYOUT', currency:'PHP', amount:'1,500.12', status:'PENDING', business_id:'62940a13-…dfdb', settlement_date:'2026-08-24 11:06', created:'2026-08-24 11:00', updated:'2026-08-24 11:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:3, desc:"Release LOCK #1. Real evidence from a comparable payout on a live account: creation-to-settlement took 6 minutes total.",
+      sql:"COMMIT;", ops:[{t:'unlock', table:'account', id:'acc_php_liab'}] },
+
+    { section:4, desc:"Fetch the transaction being settled.",
+      sql:"SELECT * FROM transaction WHERE id = 'TXN-PAYOUT-01';",
+      ops:[{t:'read', table:'txn', id:'txn_payout'}] },
+    { section:4, desc:"Acquire an exclusive lock on ACC-PHP-LIAB a second time — LOCK #2. Same row, same account, locked twice across one payout's lifecycle.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-PHP-LIAB' FOR UPDATE;",
+      ops:[{t:'lock', table:'account', id:'acc_php_liab', label:'LOCK #2'}] },
+    { section:4, desc:"Allocate the next sequence numbers for this account (4501, 9001).",
+      sql:"-- sequence allocation, second time for this account", ops:[] },
+    { section:4, desc:"Insert the debit line: funds leave the merchant's PHP balance.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0005','PAYOUT_DEBIT',1500.12,0,'TXN-PAYOUT-01','ACC-PHP-LIAB','62940a13-…',4501,'2026-08-24 11:06',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll5', row:{id:'LL-0005', type:'PAYOUT_DEBIT', debit:'1,500.12', credit:'0.00', transaction_id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-LIAB', business_id:'62940a13-…dfdb', sequence:'4501', created:'2026-08-24 11:06', amount:'null'}}] },
+    { section:4, desc:"Insert the offsetting credit on ACC-PHP-CASH.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0006','PAYOUT_CONTRA',0,1500.12,'TXN-PAYOUT-01','ACC-PHP-CASH','XENDIT_INTERNAL',9001,'2026-08-24 11:06',NULL);",
+      ops:[{t:'insert', table:'line', id:'ll6', row:{id:'LL-0006', type:'PAYOUT_CONTRA', debit:'0.00', credit:'1,500.12', transaction_id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-CASH', business_id:'XENDIT_INTERNAL', sequence:'9001', created:'2026-08-24 11:06', amount:'null'}}] },
+    { section:4, desc:"Mark the transaction settled.",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='2026-08-24 11:06', settled_at='2026-08-24 11:06', settlement_status='SETTLED'\nWHERE id='TXN-PAYOUT-01';",
+      ops:[{t:'update', table:'txn', id:'txn_payout', patch:{status:'COMPLETED', updated:'2026-08-24 11:06', settled_at:'2026-08-24 11:06', settlement_status:'SETTLED'}}] },
+    { section:4, desc:"Release LOCK #2. Real evidence: create-to-settle for a live payout was observed taking 6 minutes end to end.",
+      sql:"COMMIT;", ops:[{t:'unlock', table:'account', id:'acc_php_liab'}] },
+
+    { section:5, real:true,
+      desc:"Switching to real data read directly from a live account's Balance History page. ACC-SGD-LIAB already had prior activity before this point — we're picking up its actual timeline mid-stream.",
+      sql:"-- observed: dashboard.xendit.co, Balance History (SGD)",
+      ops:[{t:'insert', table:'account', id:'acc_sgd_liab', row:{id:'ACC-SGD-LIAB', business_id:NA, currency:'SGD', type:'Liability', created:'— (pre-existing)'}}] },
+    { section:5, real:true, hyp:true,
+      desc:"Presumed lock on ACC-SGD-LIAB before writing. The dashboard doesn't expose the lock itself, only its effect on the balance.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-SGD-LIAB' FOR UPDATE; -- presumed",
+      ops:[{t:'hyplock', table:'account', id:'acc_sgd_liab', label:'presumed lock'}] },
+    { section:5, real:true,
+      desc:"A card payment settles: the Transaction line posts +SGD 100.00 → ending balance 198.12. 198.12 ≠ 100.00 is itself direct proof the balance column holds a running total, not this event's own amount.",
+      sql:"-- Balance History row, 23 Aug 2026, 11:02 PM, VISA, ref invoice-1787…",
+      ops:[{t:'insert', table:'line', id:'ll_real1', row:{id:'LL-R01', type:'Transaction', debit:'0.00', credit:'198.12', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:02 PM', amount:'null'}}] },
+    { section:5, real:true, hyp:true,
+      desc:"Unlock.",
+      sql:"COMMIT; -- presumed", ops:[{t:'hypunlock', table:'account', id:'acc_sgd_liab'}] },
+    { section:5, real:true, hyp:true,
+      desc:"One minute later, the Fee for that same payment posts as its OWN line — against the SAME account, not a separate fee-revenue account.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-SGD-LIAB' FOR UPDATE; -- presumed",
+      ops:[{t:'hyplock', table:'account', id:'acc_sgd_liab', label:'presumed lock'}] },
+    { section:5, real:true,
+      desc:"Insert the Fee line: −SGD 4.30 → ending 193.82. 198.12 − 4.30 = 193.82, exactly.",
+      sql:"-- Balance History row, 23 Aug 2026, 11:03 PM, VISA, ref invoice-1787…",
+      ops:[{t:'insert', table:'line', id:'ll_real2', row:{id:'LL-R02', type:'Fee', debit:'4.30', credit:'0.00', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:03 PM', amount:'null'}}] },
+    { section:5, hyp:true,
+      desc:"The fees table itself isn't visible anywhere on the dashboard — only its downstream effect (the ledger_line above) is. Whether a fees row like this actually gets written is inferred from the schema, not observed.",
+      sql:"INSERT INTO fees (id, transaction_id, ledger_line_id, status, amount, business_id, created, billing_currency, updated, type)\nVALUES ('FEE-0001','invoice-1787…',NULL,'PENDING',4.30,?,'23 Aug 2026, 11:03 PM','SGD','23 Aug 2026, 11:03 PM','channel_fee'); -- presumed",
+      ops:[{t:'insert', table:'fee', id:'fee1', row:{id:'FEE-0001', transaction_id:'invoice-1787… (real, truncated)', ledger_line_id:'null', status:'PENDING', amount:'4.30', business_id:NA, created:'23 Aug 2026, 11:03 PM', billing_currency:'SGD', updated:'23 Aug 2026, 11:03 PM', type:'channel_fee'}}] },
+    { section:5, hyp:true,
+      desc:"If it exists, this row would presumably link to the ledger_line and flip to booked shortly after. Still unconfirmed whether this happens, or whether it shares the parent's lock window or reacquires its own.",
+      sql:"UPDATE fees SET ledger_line_id='LL-R02', status='BOOKED', updated='23 Aug 2026, 11:03 PM'\nWHERE id='FEE-0001'; -- presumed",
+      ops:[{t:'update', table:'fee', id:'fee1', patch:{ledger_line_id:'LL-R02', status:'BOOKED'}}, {t:'hypunlock', table:'account', id:'acc_sgd_liab'}] },
+
+    { section:6, real:true,
+      desc:"Same account, next real event: about 23 hours later, this merchant converts SGD into USD. An FX rate was locked via a Quote roughly 30 seconds earlier.",
+      sql:"POST /conversions\n{ quote_id: 'qo-...', reference_id: 'DASH_aba4_1787549757079' }",
+      ops:[{t:'insert', table:'txn', id:'txn_conv', row:{id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', type:'CONVERSION', currency:'SGD → USD', amount:'100.00 → 77.92', status:'PENDING', business_id:NA, settlement_date:'24 Aug 2026, 12:35 PM', created:'24 Aug 2026, 12:35 PM', updated:'24 Aug 2026, 12:35 PM', settled_at:'null', settlement_status:'null'}}] },
+    { section:6, real:true, hyp:true,
+      desc:"Presumed lock on ACC-SGD-LIAB, the source side.",
+      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-SGD-LIAB' FOR UPDATE; -- presumed",
+      ops:[{t:'hyplock', table:'account', id:'acc_sgd_liab', label:'presumed lock'}] },
+    { section:6, real:true,
+      desc:"Debit the SGD side: −SGD 100.00 → ending 93.82. 193.82 − 100.00 = 93.82, matching the real Balance History row exactly.",
+      sql:"-- Balance History row, 24 Aug 2026, 12:35 PM",
+      ops:[{t:'insert', table:'line', id:'ll_real3', row:{id:'LL-R03', type:'Conversion', debit:'100.00', credit:'0.00', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:35 PM', amount:'null'}}] },
+    { section:6, real:true,
+      desc:"Credit the USD side on a new account, ACC-USD-LIAB — the first activity we have for it, ending at 77.92.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R04','a0157dff…','ACC-USD-LIAB',0,77.92,...);",
+      ops:[{t:'insert', table:'account', id:'acc_usd_liab', row:{id:'ACC-USD-LIAB', business_id:NA, currency:'USD', type:'Liability', created:'24 Aug 2026, 12:35 PM (first seen)'}}, {t:'insert', table:'line', id:'ll_real4', row:{id:'LL-R04', type:'Conversion', debit:'0.00', credit:'77.92', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-USD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:36 PM', amount:'null'}}] },
+    { section:6, real:true, hyp:true,
+      desc:"Mark the conversion settled, release the lock(s).",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='24 Aug 2026, 12:36 PM', settled_at='24 Aug 2026, 12:36 PM', settlement_status='SETTLED'\nWHERE id='a0157dff…8bf035f7';\nCOMMIT; -- presumed",
+      ops:[{t:'update', table:'txn', id:'txn_conv', patch:{status:'COMPLETED', updated:'24 Aug 2026, 12:36 PM', settled_at:'24 Aug 2026, 12:36 PM', settlement_status:'SETTLED'}}, {t:'hypunlock', table:'account', id:'acc_sgd_liab'}] },
+    { section:6, real:true,
+      desc:"Real evidence: created 12:35 PM, settled 12:36 PM — about one minute end to end. Faster than Money-Out's 6 minutes, worlds faster than Money-In's multi-day batch.",
+      sql:"-- SETTLEMENT DATE − CREATED ≈ 1 minute", ops:[] },
+
+    { section:7, desc:"", sql:"", ops:[] }
+  ];
+
+  // ============================================================
+  // PROPOSED-STATE STEPS (append-only ledger_line + ledger_balance, atomic UPDATE instead of lock)
+  // ============================================================
+  var PROPOSED_STEPS = [
+    { section:0,
+      desc:"Same four accounts as the current-state walkthrough, plus one new table: ledger_balance — one row per account, holding the current available balance directly. No more deriving it from the newest ledger_line row. IDR accounts start at 0 (no prior activity). PHP-LIAB is seeded with 10,000.00 headroom so the Money-Out payout below has funds to draw against (illustrative seed, not real data).",
+      sql:"-- baseline state, ledger_balance seeded alongside ledger_account",
+      ops:[
+        {t:'insert', table:'account', id:'acc_idr_liab', row:{id:'ACC-IDR-LIAB', business_id:'d290f1ee-6c54-4b01-90e6-…0851', currency:'IDR', type:'Liability', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_idr_cash', row:{id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', currency:'IDR', type:'Cash', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_php_liab', row:{id:'ACC-PHP-LIAB', business_id:'62940a13-d065-4cac-9b5a-…dfdb', currency:'PHP', type:'Liability', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'account', id:'acc_php_cash', row:{id:'ACC-PHP-CASH', business_id:'XENDIT_INTERNAL', currency:'PHP', type:'Cash', created:'2026-08-01 00:00'}},
+        {t:'insert', table:'balance', id:'bal_idr_liab', row:{account_id:'ACC-IDR-LIAB', available:'0.00', updated_at:'2026-08-01 00:00'}},
+        {t:'insert', table:'balance', id:'bal_idr_cash', row:{account_id:'ACC-IDR-CASH', available:'0.00', updated_at:'2026-08-01 00:00'}},
+        {t:'insert', table:'balance', id:'bal_php_liab', row:{account_id:'ACC-PHP-LIAB', available:'10,000.00', updated_at:'2026-08-01 00:00'}},
+        {t:'insert', table:'balance', id:'bal_php_cash', row:{account_id:'ACC-PHP-CASH', available:'0.00', updated_at:'2026-08-01 00:00'}}
+      ] },
+
+    { section:1, desc:"Look up the merchant's IDR Liability account. Unchanged from the current design — Money-In create was already lock-free.",
+      sql:"SELECT id FROM ledger_account\nWHERE business_id = ? AND currency = 'IDR';",
+      ops:[{t:'read', table:'account', id:'acc_idr_liab'}] },
+    { section:1, desc:"Insert TXN-PAYIN-01 as PENDING (created Friday). Identical to the current design.",
+      sql:"INSERT INTO transaction (...)\nVALUES ('TXN-PAYIN-01','ACC-IDR-LIAB','PAYIN','IDR',500000.00,'PENDING','d290f1ee-…','2026-08-24 23:00','2026-08-21 14:00','2026-08-21 14:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payin1', row:{id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-LIAB', type:'PAYIN', currency:'IDR', amount:'500,000.00', status:'PENDING', business_id:'d290f1ee-…0851', settlement_date:'2026-08-24 23:00', created:'2026-08-21 14:00', updated:'2026-08-21 14:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:1, desc:"Two days later, Saturday: insert TXN-PAYIN-02 as PENDING. Still no lock, still just sitting in the queue.",
+      sql:"INSERT INTO transaction (...)\nVALUES ('TXN-PAYIN-02','ACC-IDR-LIAB','PAYIN','IDR',200000.00,'PENDING','d290f1ee-…','2026-08-24 23:00','2026-08-22 10:00','2026-08-22 10:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payin2', row:{id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-LIAB', type:'PAYIN', currency:'IDR', amount:'200,000.00', status:'PENDING', business_id:'d290f1ee-…0851', settlement_date:'2026-08-24 23:00', created:'2026-08-22 10:00', updated:'2026-08-22 10:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:1, desc:"Both sit PENDING over the weekend, exactly as before.",
+      sql:"-- no settlement job has run yet", ops:[] },
+
+    { section:2, batchQueue:Q1,
+      desc:"The batch still runs on a schedule, but nothing in this run needs a lock. Because ledger_line is append-only and the current balance lives in ledger_balance, every posting is one atomic statement — independent accounts (or even independent transactions on the same account) no longer serialize behind a shared row lock. Sharding by account or moving to intraday micro-batches removes the weekend pileup at the scheduling layer; this removes the row-lock contention underneath it.",
+      sql:"-- scheduled job, fires as batch or intraday micro-batch", ops:[] },
+    { section:2, batchQueue:Q2,
+      desc:"Pick up TXN-PAYIN-01, created Friday.",
+      sql:"SELECT * FROM transaction\nWHERE status='PENDING' ORDER BY created;",
+      ops:[{t:'read', table:'txn', id:'txn_payin1'}] },
+    { section:2, batchQueue:Q2,
+      desc:"Atomic UPDATE on ACC-IDR-LIAB's balance row — add this transaction's amount directly. No read-then-write, no lock.",
+      sql:"UPDATE ledger_balance\nSET available = available + 500000.00, updated_at = '2026-08-24 23:00'\nWHERE account_id = 'ACC-IDR-LIAB';\n-- 0.00 → 500,000.00",
+      ops:[{t:'update', table:'balance', id:'bal_idr_liab', patch:{available:'500,000.00', updated_at:'2026-08-24 23:00'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Insert the credit line — now just this transaction's own amount (500,000.00), a pure delta. It happens to match the current-state walkthrough's equivalent row only because this is the account's first-ever event; watch what happens on the next transaction.",
+      sql:"INSERT INTO ledger_line (id, type, debit, credit, transaction_id, ledger_account_id, business_id, sequence, created)\nVALUES ('LL-0001','PAYIN_CREDIT',0,500000.00,'TXN-PAYIN-01','ACC-IDR-LIAB','d290f1ee-…',10234,'2026-08-24 23:00');",
+      ops:[{t:'insert', table:'line', id:'ll1', row:{id:'LL-0001', type:'PAYIN_CREDIT', debit:'0.00', credit:'500,000.00', transaction_id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-LIAB', business_id:'d290f1ee-…0851', sequence:'10234', created:'2026-08-24 23:00'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Same atomic pattern on the Cash side.",
+      sql:"UPDATE ledger_balance\nSET available = available + 500000.00, updated_at = '2026-08-24 23:00'\nWHERE account_id = 'ACC-IDR-CASH';\n-- 0.00 → 500,000.00",
+      ops:[{t:'update', table:'balance', id:'bal_idr_cash', patch:{available:'500,000.00', updated_at:'2026-08-24 23:00'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Insert the offsetting Cash-side delta line.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0002','PAYIN_CONTRA',500000.00,0,'TXN-PAYIN-01','ACC-IDR-CASH','XENDIT_INTERNAL',88123,'2026-08-24 23:00');",
+      ops:[{t:'insert', table:'line', id:'ll2', row:{id:'LL-0002', type:'PAYIN_CONTRA', debit:'500,000.00', credit:'0.00', transaction_id:'TXN-PAYIN-01', ledger_account_id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', sequence:'88123', created:'2026-08-24 23:00'}}] },
+    { section:2, batchQueue:Q2,
+      desc:"Mark TXN-PAYIN-01 settled.",
+      sql:"UPDATE transaction\nSET status='COMPLETED', updated='2026-08-24 23:00', settled_at='2026-08-24 23:00', settlement_status='SETTLED'\nWHERE id='TXN-PAYIN-01';",
+      ops:[{t:'update', table:'txn', id:'txn_payin1', patch:{status:'COMPLETED', updated:'2026-08-24 23:00', settled_at:'2026-08-24 23:00', settlement_status:'SETTLED'}}] },
+    { section:2, batchQueue:Q4,
+      desc:"Same batch run, next queued: TXN-PAYIN-02, created a full day later on Saturday. Read it — no lock to release from the previous transaction, so there's nothing blocking this from starting immediately, or even running in parallel.",
+      sql:"SELECT * FROM transaction\nWHERE status='PENDING' ORDER BY created;",
+      ops:[{t:'read', table:'txn', id:'txn_payin2'}] },
+    { section:2, batchQueue:Q4,
+      desc:"Atomic UPDATE again — same account as the previous transaction, no lock needed even back-to-back. This is the direct contrast with the current design: there, this required re-acquiring the same account lock a second time inside one batch run.",
+      sql:"UPDATE ledger_balance\nSET available = available + 200000.00, updated_at = '2026-08-24 23:00:05'\nWHERE account_id = 'ACC-IDR-LIAB';\n-- 500,000.00 → 700,000.00",
+      ops:[{t:'update', table:'balance', id:'bal_idr_liab', patch:{available:'700,000.00', updated_at:'2026-08-24 23:00:05'}}] },
+    { section:2, batchQueue:Q4,
+      desc:"Insert the credit line — 200,000.00, this transaction's own delta. In the current-state walkthrough, the equivalent row shows 700,000.00 (the account's running total after both events); here that information lives in ledger_balance.available instead, and this row stays a clean, self-contained record of just this one posting.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0003','PAYIN_CREDIT',0,200000.00,'TXN-PAYIN-02','ACC-IDR-LIAB','d290f1ee-…',10235,'2026-08-24 23:00:05');",
+      ops:[{t:'insert', table:'line', id:'ll3', row:{id:'LL-0003', type:'PAYIN_CREDIT', debit:'0.00', credit:'200,000.00', transaction_id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-LIAB', business_id:'d290f1ee-…0851', sequence:'10235', created:'2026-08-24 23:00:05'}}] },
+    { section:2, batchQueue:Q4,
+      desc:"Atomic UPDATE the Cash-side balance.",
+      sql:"UPDATE ledger_balance\nSET available = available + 200000.00, updated_at = '2026-08-24 23:00:05'\nWHERE account_id = 'ACC-IDR-CASH';\n-- 500,000.00 → 700,000.00",
+      ops:[{t:'update', table:'balance', id:'bal_idr_cash', patch:{available:'700,000.00', updated_at:'2026-08-24 23:00:05'}}] },
+    { section:2, batchQueue:Q4,
+      desc:"Insert the offsetting Cash-side delta line — 200,000.00, not 700,000.00.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0004','PAYIN_CONTRA',200000.00,0,'TXN-PAYIN-02','ACC-IDR-CASH','XENDIT_INTERNAL',88124,'2026-08-24 23:00:05');",
+      ops:[{t:'insert', table:'line', id:'ll4', row:{id:'LL-0004', type:'PAYIN_CONTRA', debit:'200,000.00', credit:'0.00', transaction_id:'TXN-PAYIN-02', ledger_account_id:'ACC-IDR-CASH', business_id:'XENDIT_INTERNAL', sequence:'88124', created:'2026-08-24 23:00:05'}}] },
+    { section:2, batchQueue:Q5,
+      desc:"Mark TXN-PAYIN-02 settled. Two transactions, created two days apart, settled seconds apart — same outcome as before. The difference is underneath: no lock was ever acquired on ACC-IDR-LIAB in this entire run, so a weekend's worth of other accounts' transactions could process fully in parallel alongside this one.",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='2026-08-24 23:00:05', settled_at='2026-08-24 23:00:05', settlement_status='SETTLED'\nWHERE id='TXN-PAYIN-02';",
+      ops:[{t:'update', table:'txn', id:'txn_payin2', patch:{status:'COMPLETED', updated:'2026-08-24 23:00:05', settled_at:'2026-08-24 23:00:05', settlement_status:'SETTLED'}}] },
+
+    { section:3, desc:"Look up the merchant's PHP Liability account. Unchanged.",
+      sql:"SELECT id FROM ledger_account\nWHERE business_id = ? AND currency = 'PHP';",
+      ops:[{t:'read', table:'account', id:'acc_php_liab'}] },
+    { section:3, desc:"This is the fix for Money-Out's first lock: instead of an exclusive row lock to hold funds, do the hold as one atomic conditional UPDATE. It only succeeds if funds are available, and it never blocks a concurrent reader.",
+      sql:"UPDATE ledger_balance\nSET available = available - 1500.12, updated_at = '2026-08-24 11:00'\nWHERE account_id = 'ACC-PHP-LIAB' AND available >= 1500.12;\n-- 1 row updated: 10,000.00 → 8,499.88",
+      ops:[{t:'update', table:'balance', id:'bal_php_liab', patch:{available:'8,499.88', updated_at:'2026-08-24 11:00'}}] },
+    { section:3, desc:"Insert the transaction as PENDING. The funds are already reserved via the update above; there's nothing left to protect with a lock.",
+      sql:"INSERT INTO transaction (...)\nVALUES ('TXN-PAYOUT-01','ACC-PHP-LIAB','PAYOUT','PHP',1500.12,'PENDING','62940a13-…','2026-08-24 11:06','2026-08-24 11:00','2026-08-24 11:00');",
+      ops:[{t:'insert', table:'txn', id:'txn_payout', row:{id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-LIAB', type:'PAYOUT', currency:'PHP', amount:'1,500.12', status:'PENDING', business_id:'62940a13-…dfdb', settlement_date:'2026-08-24 11:06', created:'2026-08-24 11:00', updated:'2026-08-24 11:00', settled_at:'null', settlement_status:'null'}}] },
+    { section:3, desc:"Nothing to release — LOCK #1 from the current design simply doesn't exist here. The business timing (create→settle) doesn't change; only the mechanism for the hold does.",
+      sql:"-- no lock acquired, so no commit/lock release needed here", ops:[] },
+
+    { section:4, desc:"Fetch the transaction being settled.",
+      sql:"SELECT * FROM transaction WHERE id = 'TXN-PAYOUT-01';",
+      ops:[{t:'read', table:'txn', id:'txn_payout'}] },
+    { section:4, desc:"No LOCK #2 either. Insert the debit line as a pure delta — funds were already reserved at create, so settlement just appends the historical record.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0005','PAYOUT_DEBIT',1500.12,0,'TXN-PAYOUT-01','ACC-PHP-LIAB','62940a13-…',4501,'2026-08-24 11:06');",
+      ops:[{t:'insert', table:'line', id:'ll5', row:{id:'LL-0005', type:'PAYOUT_DEBIT', debit:'1,500.12', credit:'0.00', transaction_id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-LIAB', business_id:'62940a13-…dfdb', sequence:'4501', created:'2026-08-24 11:06'}}] },
+    { section:4, desc:"Atomic UPDATE the Cash-side balance — this contra side wasn't touched at create time (only the liability side was reserved), so this is where Cash actually receives the funds.",
+      sql:"UPDATE ledger_balance\nSET available = available + 1500.12, updated_at = '2026-08-24 11:06'\nWHERE account_id = 'ACC-PHP-CASH';\n-- 0.00 → 1,500.12",
+      ops:[{t:'update', table:'balance', id:'bal_php_cash', patch:{available:'1,500.12', updated_at:'2026-08-24 11:06'}}] },
+    { section:4, desc:"Insert the offsetting contra delta line.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-0006','PAYOUT_CONTRA',0,1500.12,'TXN-PAYOUT-01','ACC-PHP-CASH','XENDIT_INTERNAL',9001,'2026-08-24 11:06');",
+      ops:[{t:'insert', table:'line', id:'ll6', row:{id:'LL-0006', type:'PAYOUT_CONTRA', debit:'0.00', credit:'1,500.12', transaction_id:'TXN-PAYOUT-01', ledger_account_id:'ACC-PHP-CASH', business_id:'XENDIT_INTERNAL', sequence:'9001', created:'2026-08-24 11:06'}}] },
+    { section:4, desc:"Mark the transaction settled.",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='2026-08-24 11:06', settled_at='2026-08-24 11:06', settlement_status='SETTLED'\nWHERE id='TXN-PAYOUT-01';",
+      ops:[{t:'update', table:'txn', id:'txn_payout', patch:{status:'COMPLETED', updated:'2026-08-24 11:06', settled_at:'2026-08-24 11:06', settlement_status:'SETTLED'}}] },
+    { section:4, desc:"No lock to release. Real evidence (from the current-state walkthrough): create-to-settle was observed at ~6 minutes end to end — that business timing doesn't change; what changes is that neither step blocked any other read or write on this account while it happened.",
+      sql:"-- (no lock existed to release)", ops:[] },
+
+    { section:5, real:true,
+      desc:"Same real starting point as the current-state walkthrough: ACC-SGD-LIAB already has prior activity. Under the proposed schema its balance lives in ledger_balance directly — seeded here at 98.12 to match the real ending value the current-state walkthrough derives from the dashboard (198.12 after the +100.00 card payment below).",
+      sql:"-- observed: dashboard.xendit.co, Balance History (SGD); replayed here under the proposed schema",
+      ops:[{t:'insert', table:'account', id:'acc_sgd_liab', row:{id:'ACC-SGD-LIAB', business_id:NA, currency:'SGD', type:'Liability', created:'— (pre-existing)'}}, {t:'insert', table:'balance', id:'bal_sgd_liab', row:{account_id:'ACC-SGD-LIAB', available:'98.12', updated_at:'— (pre-existing)'}}] },
+    { section:5, real:true, hyp:true,
+      desc:"A card payment settles: atomic UPDATE, no lock. This step is a hypothetical replay of the real number under the proposed design — the dashboard doesn't expose the update mechanism either way.",
+      sql:"UPDATE ledger_balance\nSET available = available + 100.00, updated_at = '23 Aug 2026, 11:02 PM'\nWHERE account_id = 'ACC-SGD-LIAB';\n-- 98.12 → 198.12 (hypothetical replay)",
+      ops:[{t:'update', table:'balance', id:'bal_sgd_liab', patch:{available:'198.12', updated_at:'23 Aug 2026, 11:02 PM'}}] },
+    { section:5, real:true,
+      desc:"Insert the line for that payment as a pure delta: +100.00, not the 198.12 running total the current-state walkthrough shows for this same real event.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R01','Transaction',0,100.00,'invoice-1787…','ACC-SGD-LIAB',?,?,'23 Aug 2026, 11:02 PM');",
+      ops:[{t:'insert', table:'line', id:'ll_real1', row:{id:'LL-R01', type:'Transaction', debit:'0.00', credit:'100.00', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:02 PM'}}] },
+    { section:5, hyp:true,
+      desc:"One minute later, the Fee posts as its own line against the same account — same real observation as the current-state walkthrough, just booked as a delta and applied via atomic UPDATE instead of a locked read-then-write.",
+      sql:"UPDATE ledger_balance\nSET available = available - 4.30, updated_at = '23 Aug 2026, 11:03 PM'\nWHERE account_id = 'ACC-SGD-LIAB';\n-- 198.12 → 193.82 (hypothetical replay)",
+      ops:[{t:'update', table:'balance', id:'bal_sgd_liab', patch:{available:'193.82', updated_at:'23 Aug 2026, 11:03 PM'}}] },
+    { section:5, real:true,
+      desc:"Insert the Fee delta line: 4.30, not 193.82.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R02','Fee',4.30,0,'invoice-1787…','ACC-SGD-LIAB',?,?,'23 Aug 2026, 11:03 PM');",
+      ops:[{t:'insert', table:'line', id:'ll_real2', row:{id:'LL-R02', type:'Fee', debit:'4.30', credit:'0.00', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:03 PM'}}] },
+    { section:5, hyp:true,
+      desc:"The fees table is unchanged by this migration — same row shape, same open question about its own lifecycle (nullable ledger_line_id).",
+      sql:"INSERT INTO fees (id, transaction_id, ledger_line_id, status, amount, business_id, created, billing_currency, updated, type)\nVALUES ('FEE-0001','invoice-1787…',NULL,'PENDING',4.30,?,'23 Aug 2026, 11:03 PM','SGD','23 Aug 2026, 11:03 PM','channel_fee'); -- presumed",
+      ops:[{t:'insert', table:'fee', id:'fee1', row:{id:'FEE-0001', transaction_id:'invoice-1787… (real, truncated)', ledger_line_id:'null', status:'PENDING', amount:'4.30', business_id:NA, created:'23 Aug 2026, 11:03 PM', billing_currency:'SGD', updated:'23 Aug 2026, 11:03 PM', type:'channel_fee'}}] },
+    { section:5, hyp:true,
+      desc:"If it exists, same as current-state: this row would link to the ledger_line and flip to booked. Unchanged by this migration — the open question about fees' own lifecycle still stands.",
+      sql:"UPDATE fees SET ledger_line_id='LL-R02', status='BOOKED', updated='23 Aug 2026, 11:03 PM'\nWHERE id='FEE-0001'; -- presumed",
+      ops:[{t:'update', table:'fee', id:'fee1', patch:{ledger_line_id:'LL-R02', status:'BOOKED'}}] },
+
+    { section:6, real:true,
+      desc:"Same account, next real event: about 23 hours later, this merchant converts SGD into USD. All transaction fields identical to the current-state walkthrough — this migration doesn't touch the transaction table.",
+      sql:"POST /conversions\n{ quote_id: 'qo-...', reference_id: 'DASH_aba4_1787549757079' }",
+      ops:[{t:'insert', table:'txn', id:'txn_conv', row:{id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', type:'CONVERSION', currency:'SGD → USD', amount:'100.00 → 77.92', status:'PENDING', business_id:NA, settlement_date:'24 Aug 2026, 12:35 PM', created:'24 Aug 2026, 12:35 PM', updated:'24 Aug 2026, 12:35 PM', settled_at:'null', settlement_status:'null'}}] },
+    { section:6, real:true, hyp:true,
+      desc:"Atomic UPDATE debits the SGD side directly — no lock on the source account.",
+      sql:"UPDATE ledger_balance\nSET available = available - 100.00, updated_at = '24 Aug 2026, 12:35 PM'\nWHERE account_id = 'ACC-SGD-LIAB';\n-- 193.82 → 93.82 (hypothetical replay)",
+      ops:[{t:'update', table:'balance', id:'bal_sgd_liab', patch:{available:'93.82', updated_at:'24 Aug 2026, 12:35 PM'}}] },
+    { section:6, real:true,
+      desc:"Insert the SGD-side delta line: 100.00, not 93.82.",
+      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R03','Conversion',100.00,0,'a0157dff…','ACC-SGD-LIAB',?,?,'24 Aug 2026, 12:35 PM');",
+      ops:[{t:'insert', table:'line', id:'ll_real3', row:{id:'LL-R03', type:'Conversion', debit:'100.00', credit:'0.00', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:35 PM'}}] },
+    { section:6, real:true,
+      desc:"Credit the USD side on a new account, ACC-USD-LIAB — the first activity for it, so its ledger_balance row is created seeded directly from this posting (77.92).",
+      sql:"INSERT INTO ledger_balance (account_id, available, updated_at)\nVALUES ('ACC-USD-LIAB', 77.92, '24 Aug 2026, 12:36 PM');\nINSERT INTO ledger_line (...)\nVALUES ('LL-R04','Conversion',0,77.92,'a0157dff…','ACC-USD-LIAB',?,?,'24 Aug 2026, 12:36 PM');",
+      ops:[{t:'insert', table:'account', id:'acc_usd_liab', row:{id:'ACC-USD-LIAB', business_id:NA, currency:'USD', type:'Liability', created:'24 Aug 2026, 12:35 PM (first seen)'}}, {t:'insert', table:'balance', id:'bal_usd_liab', row:{account_id:'ACC-USD-LIAB', available:'77.92', updated_at:'24 Aug 2026, 12:36 PM'}}, {t:'insert', table:'line', id:'ll_real4', row:{id:'LL-R04', type:'Conversion', debit:'0.00', credit:'77.92', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-USD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:36 PM'}}] },
+    { section:6, real:true, hyp:true,
+      desc:"Mark the conversion settled. No lock to release.",
+      sql:"UPDATE transaction SET status='COMPLETED', updated='24 Aug 2026, 12:36 PM', settled_at='24 Aug 2026, 12:36 PM', settlement_status='SETTLED'\nWHERE id='a0157dff…8bf035f7';",
+      ops:[{t:'update', table:'txn', id:'txn_conv', patch:{status:'COMPLETED', updated:'24 Aug 2026, 12:36 PM', settled_at:'24 Aug 2026, 12:36 PM', settlement_status:'SETTLED'}}] },
+    { section:6, real:true,
+      desc:"Real evidence: same ~1 minute create-to-settle timing as the current-state walkthrough — this migration doesn't change conversion's throughput, which was already fast. It removes the presumed lock windows around it, if they existed at all.",
+      sql:"-- SETTLEMENT DATE − CREATED ≈ 1 minute", ops:[] },
+
+    { section:7, desc:"", sql:"", ops:[] }
+  ];
+
+  // ============================================================
+  // MODES
+  // ============================================================
+  var MODES = {
+    current: {
+      label:'Current (as-is)',
+      note:'FOR UPDATE row lock on ledger_account; ledger_line.debit/credit hold the latest running balance.',
+      sections: makeSections(),
+      steps: CURRENT_STEPS,
+      tableDefs: CURRENT_TABLE_DEFS,
+      foot:'Sections 1&ndash;4 are illustrative sample data; sections 5&ndash;6 are real values read from a live dashboard.xendit.co account. Steps marked <span class="hyp-flag" style="margin:0 2px;">presumed</span> follow the confirmed lock pattern but weren\'t directly observed.'
+    },
+    proposed: {
+      label:'Proposed (target state)',
+      note:'No account lock anywhere — a new ledger_balance table (one row/account) updated via a single atomic statement; ledger_line becomes pure append-only deltas.',
+      sections: makeSections(),
+      steps: PROPOSED_STEPS,
+      tableDefs: PROPOSED_TABLE_DEFS,
+      foot:'Same accounts, transactions and real SGD/USD numbers as the current-state walkthrough, replayed under the proposed schema so the DB-level difference is directly comparable. Sections 5&ndash;6 replay real dashboard values through a design that doesn\'t exist in production yet &mdash; marked <span class="hyp-flag" style="margin:0 2px;">hypothetical</span> for that reason, not because the underlying numbers are made up.'
+    }
+  };
+
+  var mode = 'current';
+  var SECTIONS, STEPS, TABLE_DEFS;
+  var cur = 0;
+  var playing = false;
+  var playTimer = null;
+
+  function loadMode(m){
+    mode = m;
+    var d = MODES[m];
+    SECTIONS = d.sections;
+    STEPS = d.steps;
+    TABLE_DEFS = d.tableDefs;
+    cur = 0;
+    stopPlay();
+    renderModeToggle();
+    render();
+  }
+
+  function renderModeToggle(){
+    var btns = document.querySelectorAll('#modeToggle button');
+    btns.forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-mode')===mode);
+    });
+    document.getElementById('modeNote').innerHTML =
+      '<span class="mode-pill '+mode+'">'+esc(MODES[mode].label)+'</span> &nbsp;'+esc(MODES[mode].note);
+    document.getElementById('footNote').innerHTML = MODES[mode].foot;
+  }
+
+  function computeState(uptoIndex){
+    var rows = {}; var order = {}; var locked = {}; var hypLocked = {};
+    TABLE_DEFS.forEach(function(td){ rows[td.key] = {}; order[td.key] = []; });
+
+    for (var i=0;i<=uptoIndex;i++){
+      var ops = STEPS[i].ops || [];
+      ops.forEach(function(op){
+        var key = op.table+':'+op.id;
+        if (op.t==='insert'){
+          if (!rows[op.table][op.id]){ order[op.table].push(op.id); }
+          rows[op.table][op.id] = op.row;
+        } else if (op.t==='update'){
+          var existing = rows[op.table][op.id] || {};
+          var merged = {}; for (var k in existing) merged[k]=existing[k];
+          for (var k2 in op.patch) merged[k2]=op.patch[k2];
+          rows[op.table][op.id] = merged;
+        } else if (op.t==='lock'){
+          locked[key] = op.label;
+        } else if (op.t==='unlock'){
+          delete locked[key];
+        } else if (op.t==='hyplock'){
+          hypLocked[key] = op.label;
+        } else if (op.t==='hypunlock'){
+          delete hypLocked[key];
+        }
+      });
+    }
+    return { rows:rows, order:order, locked:locked, hypLocked:hypLocked };
+  }
+
+  function flashMapForStep(idx){
+    var m = {};
+    var ops = STEPS[idx].ops || [];
+    ops.forEach(function(op){
+      var key = op.table+':'+op.id;
+      if (op.t==='read') m[key] = m[key]||'read';
+      if (op.t==='insert') m[key] = 'insert';
+      if (op.t==='update') m[key] = 'update';
+    });
+    return m;
+  }
+
+  function renderTracker(){
+    var el = document.getElementById('tracker');
+    el.innerHTML = '';
+    SECTIONS.forEach(function(sec, si){
+      var firstIdx = STEPS.findIndex(function(s){ return s.section===si; });
+      var b = document.createElement('button');
+      var isActive = STEPS[cur].section === si;
+      b.className = 'tracker-btn' + (isActive?' active':'') + (si < STEPS[cur].section ? ' done':'');
+      b.innerHTML = '<span class="n">0'+(si+1)+'</span><span class="t">'+esc(sec.title)+'</span>';
+      b.addEventListener('click', function(){ stopPlay(); goTo(firstIdx); });
+      el.appendChild(b);
+    });
+  }
+
+  function renderProgress(){
+    var pct = (cur/(STEPS.length-1))*100;
+    document.getElementById('progressFill').style.width = pct+'%';
+  }
+
+  function renderRowClass(state, flash, table, id){
+    var key = table+':'+id;
+    if (flash[key]==='insert') return 'row-insert';
+    if (flash[key]==='update') return 'row-update';
+    if (state.hypLocked[key]) return 'row-hyplock';
+    if (state.locked[key]) return 'row-locked';
+    if (flash[key]==='read') return 'row-read';
+    return 'row-idle';
+  }
+
+  function cellVal(v){
+    if (v === 'null' || v === null || v === undefined) return { text:'null', cls:'nullval' };
+    return { text:v, cls:'' };
+  }
+
+  function tableCard(td, state, flash){
+    var ids = state.order[td.key];
+    var newBadge = td.isNew ? '<span class="newbadge">NEW</span>' : '';
+    var head = '<div class="table-head"><span class="name">'+esc(td.name)+newBadge+'</span><span class="count">'+ids.length+' row'+(ids.length===1?'':'s')+'</span></div>';
+    var thead = '<thead><tr>'+td.cols.map(function(c){return '<th>'+esc(c.label)+'</th>';}).join('')+'<th></th></tr></thead>';
+    var body;
+    if (ids.length===0){
+      body = '<tr class="empty-row"><td colspan="'+(td.cols.length+1)+'">no rows yet</td></tr>';
+    } else {
+      body = ids.map(function(id){
+        var r = state.rows[td.key][id];
+        var cls = renderRowClass(state, flash, td.key, id);
+        var key = td.key+':'+id;
+        var badge = '';
+        if (state.locked[key]) badge = '<span class="badge lock">&#128274; '+esc(state.locked[key])+'</span>';
+        else if (state.hypLocked[key]) badge = '<span class="badge hyp">&#10067; '+esc(state.hypLocked[key])+'</span>';
+        else if (td.key==='balance' && (flash[key]==='insert' || flash[key]==='update')) badge = '<span class="badge atomic">&#9889; atomic</span>';
+        var tds = td.cols.map(function(c){
+          var cv = cellVal(r[c.k]);
+          var cellCls = (c.cls||'') + (cv.cls ? ' '+cv.cls : '');
+          return '<td class="'+cellCls+'">'+esc(cv.text)+'</td>';
+        }).join('');
+        return '<tr class="'+cls+'">'+tds+'<td>'+badge+'</td></tr>';
+      }).join('');
+    }
+    return '<div class="card table-card'+(td.isNew?' newtable':'')+'"><div class="table-body">'+head+'<table>'+thead+'<tbody>'+body+'</tbody></table></div></div>';
+  }
+
+  function queueWidget(q){
+    if (!q) return '';
+    var rows = q.map(function(item){
+      var label = item.state==='processing' ? 'PROCESSING' : (item.state==='done' ? 'DONE' : 'QUEUED');
+      return '<div class="queue-chip '+item.state+'"><span>'+esc(item.id)+' <span class="day">('+esc(item.day)+')</span></span><span class="status">'+label+'</span></div>';
+    }).join('');
+    return '<div class="queue"><div class="qlabel">Batch queue — same account, same run</div><div class="queue-row">'+rows+'</div></div>';
+  }
+
+  function renderOperationView(container){
+    var step = STEPS[cur];
+    var sec = SECTIONS[step.section];
+    var state = computeState(cur);
+    var flash = flashMapForStep(cur);
+
+    var sectionSteps = [];
+    STEPS.forEach(function(s,i){ if (s.section===step.section) sectionSteps.push(i); });
+    var posInSection = sectionSteps.indexOf(cur)+1;
+
+    var narrator = document.createElement('div');
+    narrator.className = 'card narrator';
+
+    var flowRow = '<div class="flow-row">' +
+      '<span class="flow-tag '+sec.flow+'">'+esc(sec.flowLabel)+'</span>' +
+      '<span class="mode-pill '+mode+'">'+esc(MODES[mode].label)+'</span>' +
+      '<span class="evidence-badge '+sec.evidence+'">'+(sec.evidence==='real' ? '&#9989; real data' : 'illustrative')+'</span>' +
+      (sec.endpoint ? '<span class="endpoint"><span class="m">'+sec.endpoint.m+'</span>'+esc(sec.endpoint.p)+'</span>' : '') +
+      '</div>';
+
+    var flag = '';
+    if (step.hyp) flag = '<span class="hyp-flag">&#10067; '+(mode==='proposed' ? 'hypothetical replay' : 'presumed, not directly observed')+'</span><br>';
+    else if (step.real) flag = '<span class="real-flag">&#9989; real data</span><br>';
+
+    var dots = sectionSteps.map(function(i){
+      return '<span class="dot'+(i===cur?' on':'')+'"></span>';
+    }).join('');
+
+    narrator.innerHTML =
+      flowRow +
+      '<h2>'+esc(sec.title)+'</h2>' +
+      '<div class="step-desc">'+flag+esc(step.desc)+'</div>' +
+      (step.sql ? '<div class="sql-box">'+esc(step.sql)+'</div>' : '') +
+      queueWidget(step.batchQueue) +
+      '<div class="substeps">'+dots+'<span class="label">step '+posInSection+' / '+sectionSteps.length+'</span></div>' +
+      '<div class="transport">' +
+        '<button class="btn" id="btnPrev" '+(cur===0?'disabled':'')+'>&larr; Prev</button>' +
+        '<button class="btn" id="btnNext" '+(cur===STEPS.length-1?'disabled':'')+'>Next &rarr;</button>' +
+        '<span class="spacer"></span>' +
+        '<button class="btn primary" id="btnPlay">'+(playing?'&#10073;&#10073; Pause':'&#9654; Play')+'</button>' +
+      '</div>';
+
+    var viewport = document.createElement('div');
+    viewport.className = 'viewport';
+    TABLE_DEFS.forEach(function(td){
+      viewport.insertAdjacentHTML('beforeend', tableCard(td, state, flash));
+    });
+
+    container.appendChild(narrator);
+    container.appendChild(viewport);
+
+    document.getElementById('btnPrev').addEventListener('click', function(){ stopPlay(); goTo(cur-1); });
+    document.getElementById('btnNext').addEventListener('click', function(){ stopPlay(); goTo(cur+1); });
+    document.getElementById('btnPlay').addEventListener('click', togglePlay);
+  }
+
+  function seg(label, cls){ return '<div class="seg '+cls+'">'+label+'</div>'; }
+
+  function renderSummaryView(container){
+    var card = document.createElement('div');
+    card.className = 'card narrator';
+    card.style.gridColumn = '1 / -1';
+    card.style.position = 'static';
+
+    var html;
+    if (mode === 'current'){
+      html = '<div class="flow-row"><span class="flow-tag overview">Overview</span><span class="mode-pill current">Current (as-is)</span></div>' +
+        '<h2>Four flows, four very different lock footprints</h2>' +
+        '<div class="step-desc">Same underlying mechanism — lock the account, write a line, unlock — but the shape of the contention is completely different per flow. Widths below are conceptual, not to time scale.</div>' +
+        '<div class="summary-grid">' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Money-In &middot; ACC-IDR-LIAB</span><span class="stat tab-nums">T+1-ish batch — real pileup observed</span></div>' +
+          '<div class="track">' + seg('Create — unlocked','') + seg('T+1 batch — LOCK, per txn, back to back','locked') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Money-Out &middot; ACC-PHP-LIAB</span><span class="stat tab-nums">2 lock windows &middot; ~6 min real</span></div>' +
+          '<div class="track">' + seg('Create — LOCK #1','locked') + seg('in flight — unlocked','') + seg('Settle — LOCK #2','locked') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real)</span><span class="stat tab-nums">same account as parent, presumed lock</span></div>' +
+          '<div class="track">' + seg('Parent txn — presumed LOCK','hyplocked') + seg('+1 min: Fee line — presumed LOCK','hyplocked') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Conversion &middot; ACC-SGD/USD-LIAB (real)</span><span class="stat tab-nums">~1 min real — fastest of all four</span></div>' +
+          '<div class="track">' + seg('Create + Settle — presumed LOCK','hyplocked') + '</div></div>' +
+        '</div>' +
+        '<div class="step-desc" style="margin-top:4px;"><b>What the proposed design removes — switch the toggle above to see it:</b></div>' +
+        '<div class="fix-list">' +
+          '<div class="fix-item"><span class="icon">&rarr;</span><div class="body"><b>New ledger_balance table</b><p>One row per account, updated by a single atomic statement — removes the need to read the latest ledger_line row before writing the next one.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">&rarr;</span><div class="body"><b>Conditional atomic UPDATE for the hold</b><p>Replace Money-Out&rsquo;s LOCK #1 with <code>UPDATE ... SET available = available - amount WHERE available &gt;= amount</code> &mdash; removes that lock window entirely.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">&rarr;</span><div class="body"><b>ledger_line becomes append-only</b><p>debit/credit hold this posting&rsquo;s delta, not the running balance &mdash; no reader ever needs the &ldquo;latest row&rdquo; again.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">&rarr;</span><div class="body"><b>De-concentrate the T+1 batch</b><p>Sharded by account or moved to intraday micro-batches &mdash; a weekend&rsquo;s volume no longer serializes through one nightly run.</p></div></div>' +
+        '</div>';
+    } else {
+      html = '<div class="flow-row"><span class="flow-tag overview">Overview</span><span class="mode-pill proposed">Proposed (target state)</span></div>' +
+        '<h2>Same four flows, zero lock windows</h2>' +
+        '<div class="step-desc">Every posting above ran as a single atomic statement against ledger_balance, plus an append-only insert into ledger_line. No FOR UPDATE lock was acquired anywhere in this walkthrough. Widths below are conceptual, not to time scale.</div>' +
+        '<div class="summary-grid">' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Money-In &middot; ACC-IDR-LIAB</span><span class="stat tab-nums">batch/micro-batch — no serialization</span></div>' +
+          '<div class="track">' + seg('Create — unlocked','') + seg('Settle — atomic UPDATE per txn, no lock','atomicseg') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Money-Out &middot; ACC-PHP-LIAB</span><span class="stat tab-nums">2 atomic statements &middot; ~6 min real business timing unchanged</span></div>' +
+          '<div class="track">' + seg('Create — atomic conditional UPDATE','atomicseg') + seg('in flight — unlocked','') + seg('Settle — atomic UPDATE + append','atomicseg') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real, replayed)</span><span class="stat tab-nums">same account as parent, atomic update</span></div>' +
+          '<div class="track">' + seg('Parent txn — atomic UPDATE','atomicseg') + seg('+1 min: Fee line — atomic UPDATE','atomicseg') + '</div></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Conversion &middot; ACC-SGD/USD-LIAB (real, replayed)</span><span class="stat tab-nums">~1 min real &mdash; unchanged, already fast</span></div>' +
+          '<div class="track">' + seg('Create + Settle — atomic UPDATE','atomicseg') + '</div></div>' +
+        '</div>' +
+        '<div class="step-desc" style="margin-top:4px;"><b>What stayed the same:</b></div>' +
+        '<div class="fix-list">' +
+          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>ledger_account and transaction are untouched</b><p>The fix is isolated to the balance-computation path, not the account or transaction shape.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>fees is unchanged</b><p>Same columns, same open question about its own lifecycle (nullable ledger_line_id) &mdash; not addressed by this migration.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>Real business timing is unchanged</b><p>Money-Out&rsquo;s ~6 minutes and Conversion&rsquo;s ~1 minute create-to-settle are unaffected &mdash; this fix removes lock contention, not the underlying settlement latency.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">&#9888;</span><div class="body"><b>Not shown here: reporting/CDC split</b><p>This walkthrough is scoped to the OLTP write path. The reporting-side fix (CDC into a dedicated analytics store) is a separate concern &mdash; see architecture-diagram.md section 2b.</p></div></div>' +
+        '</div>';
+    }
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  }
+
+  function render(){
+    renderTracker();
+    renderProgress();
+    var stage = document.getElementById('stage');
+    stage.innerHTML = '';
+    if (STEPS[cur].section === 7){
+      renderSummaryView(stage);
+    } else {
+      renderOperationView(stage);
+    }
+  }
+
+  function goTo(i){
+    if (i<0 || i>STEPS.length-1) return;
+    cur = i;
+    render();
+  }
+
+  function stopPlay(){
+    playing = false;
+    if (playTimer){ clearTimeout(playTimer); playTimer=null; }
+  }
+
+  function togglePlay(){
+    if (playing){ stopPlay(); render(); return; }
+    playing = true;
+    render();
+    step();
+    function step(){
+      if (!playing) return;
+      if (cur >= STEPS.length-1){ stopPlay(); render(); return; }
+      playTimer = setTimeout(function(){
+        cur += 1;
+        render();
+        step();
+      }, 1700);
+    }
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (e.key==='ArrowRight'){ stopPlay(); goTo(cur+1); }
+    if (e.key==='ArrowLeft'){ stopPlay(); goTo(cur-1); }
+  });
+
+  document.querySelectorAll('#modeToggle button').forEach(function(b){
+    b.addEventListener('click', function(){ loadMode(b.getAttribute('data-mode')); });
+  });
+
+  loadMode('current');
+})();
+</script>
+</body>
+</html>
