@@ -234,7 +234,6 @@
   .flow-tag.moneyin{ color:var(--success); border-color:var(--success); }
   .flow-tag.moneyout{ color:var(--danger); border-color:var(--danger); }
   .flow-tag.fees{ color:var(--hyp); border-color:var(--hyp); }
-  .flow-tag.conversion{ color:var(--info); border-color:var(--info); }
   .flow-tag.overview{ color:var(--accent); border-color:var(--accent); }
 
   .evidence-badge{
@@ -487,7 +486,6 @@
       {title:'Money-Out — Create', flow:'moneyout', flowLabel:'Money-Out', endpoint:{m:'POST', p:'/api/transactions'}, evidence:'illustrative'},
       {title:'Money-Out — Settle', flow:'moneyout', flowLabel:'Money-Out', endpoint:{m:'PATCH', p:'/api/transactions/{id}'}, evidence:'illustrative'},
       {title:'Fee — same account, real data', flow:'fees', flowLabel:'Fee', endpoint:{m:'—', p:'observed via Balance History'}, evidence:'real'},
-      {title:'Conversion — real data', flow:'conversion', flowLabel:'Conversion', endpoint:{m:'POST', p:'/conversions'}, evidence:'real'},
       {title:'Summary', flow:'overview', flowLabel:'Overview', endpoint:null, evidence:'illustrative'}
     ];
   }
@@ -697,39 +695,15 @@
       sql:"-- Balance History row, 23 Aug 2026, 11:03 PM, VISA, ref invoice-1787…",
       ops:[{t:'insert', table:'line', id:'ll_real2', row:{id:'LL-R02', type:'Fee', debit:'4.30', credit:'0.00', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:03 PM', amount:'null'}}] },
     { section:5, hyp:true,
-      desc:"The fees table itself isn't visible anywhere on the dashboard — only its downstream effect (the ledger_line above) is. Whether a fees row like this actually gets written is inferred from the schema, not observed.",
+      desc:"✅ Confirmed with the tech team: the fee does NOT get its own row in transaction — despite the schema PDF listing FEE among transaction.type's values, that's not what actually happens. This fees row (if it exists — the fees table itself isn't visible anywhere on the dashboard, only its downstream ledger_line effect is) would key off the PARENT transaction's id, not a new one.",
       sql:"INSERT INTO fees (id, transaction_id, ledger_line_id, status, amount, business_id, created, billing_currency, updated, type)\nVALUES ('FEE-0001','invoice-1787…',NULL,'PENDING',4.30,?,'23 Aug 2026, 11:03 PM','SGD','23 Aug 2026, 11:03 PM','channel_fee'); -- presumed",
       ops:[{t:'insert', table:'fee', id:'fee1', row:{id:'FEE-0001', transaction_id:'invoice-1787… (real, truncated)', ledger_line_id:'null', status:'PENDING', amount:'4.30', business_id:NA, created:'23 Aug 2026, 11:03 PM', billing_currency:'SGD', updated:'23 Aug 2026, 11:03 PM', type:'channel_fee'}}] },
     { section:5, hyp:true,
-      desc:"If it exists, this row would presumably link to the ledger_line and flip to booked shortly after. Still unconfirmed whether this happens, or whether it shares the parent's lock window or reacquires its own.",
+      desc:"If it exists, this row would presumably link to the ledger_line and flip to booked shortly after. Still unconfirmed whether this happens, or whether it shares the parent's lock window or reacquires its own — what IS confirmed is that no transaction row is created for it, so there's no transaction table state to reconcile against here.",
       sql:"UPDATE fees SET ledger_line_id='LL-R02', status='BOOKED', updated='23 Aug 2026, 11:03 PM'\nWHERE id='FEE-0001'; -- presumed",
       ops:[{t:'update', table:'fee', id:'fee1', patch:{ledger_line_id:'LL-R02', status:'BOOKED'}}, {t:'hypunlock', table:'account', id:'acc_sgd_liab'}] },
 
-    { section:6, real:true,
-      desc:"Same account, next real event: about 23 hours later, this merchant converts SGD into USD. An FX rate was locked via a Quote roughly 30 seconds earlier.",
-      sql:"POST /conversions\n{ quote_id: 'qo-...', reference_id: 'DASH_aba4_1787549757079' }",
-      ops:[{t:'insert', table:'txn', id:'txn_conv', row:{id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', type:'CONVERSION', currency:'SGD → USD', amount:'100.00 → 77.92', status:'PENDING', business_id:NA, settlement_date:'24 Aug 2026, 12:35 PM', created:'24 Aug 2026, 12:35 PM', updated:'24 Aug 2026, 12:35 PM', settled_at:'null', settlement_status:'null'}}] },
-    { section:6, real:true, hyp:true,
-      desc:"Presumed lock on ACC-SGD-LIAB, the source side.",
-      sql:"SELECT * FROM ledger_account\nWHERE id = 'ACC-SGD-LIAB' FOR UPDATE; -- presumed",
-      ops:[{t:'hyplock', table:'account', id:'acc_sgd_liab', label:'presumed lock'}] },
-    { section:6, real:true,
-      desc:"Debit the SGD side: −SGD 100.00 → ending 93.82. 193.82 − 100.00 = 93.82, matching the real Balance History row exactly.",
-      sql:"-- Balance History row, 24 Aug 2026, 12:35 PM",
-      ops:[{t:'insert', table:'line', id:'ll_real3', row:{id:'LL-R03', type:'Conversion', debit:'100.00', credit:'0.00', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:35 PM', amount:'null'}}] },
-    { section:6, real:true,
-      desc:"Credit the USD side on a new account, ACC-USD-LIAB — the first activity we have for it, ending at 77.92.",
-      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R04','a0157dff…','ACC-USD-LIAB',0,77.92,...);",
-      ops:[{t:'insert', table:'account', id:'acc_usd_liab', row:{id:'ACC-USD-LIAB', business_id:NA, currency:'USD', type:'Liability', created:'24 Aug 2026, 12:35 PM (first seen)'}}, {t:'insert', table:'line', id:'ll_real4', row:{id:'LL-R04', type:'Conversion', debit:'0.00', credit:'77.92', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-USD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:36 PM', amount:'null'}}] },
-    { section:6, real:true, hyp:true,
-      desc:"Mark the conversion settled, release the lock(s).",
-      sql:"UPDATE transaction SET status='COMPLETED', updated='24 Aug 2026, 12:36 PM', settled_at='24 Aug 2026, 12:36 PM', settlement_status='SETTLED'\nWHERE id='a0157dff…8bf035f7';\nCOMMIT; -- presumed",
-      ops:[{t:'update', table:'txn', id:'txn_conv', patch:{status:'COMPLETED', updated:'24 Aug 2026, 12:36 PM', settled_at:'24 Aug 2026, 12:36 PM', settlement_status:'SETTLED'}}, {t:'hypunlock', table:'account', id:'acc_sgd_liab'}] },
-    { section:6, real:true,
-      desc:"Real evidence: created 12:35 PM, settled 12:36 PM — about one minute end to end. Faster than Money-Out's 6 minutes, worlds faster than Money-In's multi-day batch.",
-      sql:"-- SETTLEMENT DATE − CREATED ≈ 1 minute", ops:[] },
-
-    { section:7, desc:"", sql:"", ops:[] }
+    { section:6, desc:"", sql:"", ops:[] }
   ];
 
   // ============================================================
@@ -865,7 +839,7 @@
       sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R02','Fee',4.30,0,'invoice-1787…','ACC-SGD-LIAB',?,?,'23 Aug 2026, 11:03 PM');",
       ops:[{t:'insert', table:'line', id:'ll_real2', row:{id:'LL-R02', type:'Fee', debit:'4.30', credit:'0.00', transaction_id:'invoice-1787… (real, truncated)', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'23 Aug 2026, 11:03 PM'}}] },
     { section:5, hyp:true,
-      desc:"The fees table is unchanged by this migration — same row shape, same open question about its own lifecycle (nullable ledger_line_id).",
+      desc:"The fees table is unchanged by this migration — same row shape, same open question about its own lifecycle (nullable ledger_line_id). ✅ Also confirmed: this row (if it exists) keys off the PARENT transaction's id — fees never get their own transaction row, in either schema version.",
       sql:"INSERT INTO fees (id, transaction_id, ledger_line_id, status, amount, business_id, created, billing_currency, updated, type)\nVALUES ('FEE-0001','invoice-1787…',NULL,'PENDING',4.30,?,'23 Aug 2026, 11:03 PM','SGD','23 Aug 2026, 11:03 PM','channel_fee'); -- presumed",
       ops:[{t:'insert', table:'fee', id:'fee1', row:{id:'FEE-0001', transaction_id:'invoice-1787… (real, truncated)', ledger_line_id:'null', status:'PENDING', amount:'4.30', business_id:NA, created:'23 Aug 2026, 11:03 PM', billing_currency:'SGD', updated:'23 Aug 2026, 11:03 PM', type:'channel_fee'}}] },
     { section:5, hyp:true,
@@ -873,31 +847,7 @@
       sql:"UPDATE fees SET ledger_line_id='LL-R02', status='BOOKED', updated='23 Aug 2026, 11:03 PM'\nWHERE id='FEE-0001'; -- presumed",
       ops:[{t:'update', table:'fee', id:'fee1', patch:{ledger_line_id:'LL-R02', status:'BOOKED'}}] },
 
-    { section:6, real:true,
-      desc:"Same account, next real event: about 23 hours later, this merchant converts SGD into USD. All transaction fields identical to the current-state walkthrough — this migration doesn't touch the transaction table.",
-      sql:"POST /conversions\n{ quote_id: 'qo-...', reference_id: 'DASH_aba4_1787549757079' }",
-      ops:[{t:'insert', table:'txn', id:'txn_conv', row:{id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', type:'CONVERSION', currency:'SGD → USD', amount:'100.00 → 77.92', status:'PENDING', business_id:NA, settlement_date:'24 Aug 2026, 12:35 PM', created:'24 Aug 2026, 12:35 PM', updated:'24 Aug 2026, 12:35 PM', settled_at:'null', settlement_status:'null'}}] },
-    { section:6, real:true, hyp:true,
-      desc:"Atomic UPDATE debits the SGD side directly — no lock on the source account.",
-      sql:"UPDATE ledger_balance\nSET available = available - 100.00, updated_at = '24 Aug 2026, 12:35 PM'\nWHERE account_id = 'ACC-SGD-LIAB';\n-- 193.82 → 93.82 (hypothetical replay)",
-      ops:[{t:'update', table:'balance', id:'bal_sgd_liab', patch:{available:'93.82', updated_at:'24 Aug 2026, 12:35 PM'}}] },
-    { section:6, real:true,
-      desc:"Insert the SGD-side delta line: 100.00, not 93.82.",
-      sql:"INSERT INTO ledger_line (...)\nVALUES ('LL-R03','Conversion',100.00,0,'a0157dff…','ACC-SGD-LIAB',?,?,'24 Aug 2026, 12:35 PM');",
-      ops:[{t:'insert', table:'line', id:'ll_real3', row:{id:'LL-R03', type:'Conversion', debit:'100.00', credit:'0.00', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-SGD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:35 PM'}}] },
-    { section:6, real:true,
-      desc:"Credit the USD side on a new account, ACC-USD-LIAB — the first activity for it, so its ledger_balance row is created seeded directly from this posting (77.92).",
-      sql:"INSERT INTO ledger_balance (account_id, available, updated_at)\nVALUES ('ACC-USD-LIAB', 77.92, '24 Aug 2026, 12:36 PM');\nINSERT INTO ledger_line (...)\nVALUES ('LL-R04','Conversion',0,77.92,'a0157dff…','ACC-USD-LIAB',?,?,'24 Aug 2026, 12:36 PM');",
-      ops:[{t:'insert', table:'account', id:'acc_usd_liab', row:{id:'ACC-USD-LIAB', business_id:NA, currency:'USD', type:'Liability', created:'24 Aug 2026, 12:35 PM (first seen)'}}, {t:'insert', table:'balance', id:'bal_usd_liab', row:{account_id:'ACC-USD-LIAB', available:'77.92', updated_at:'24 Aug 2026, 12:36 PM'}}, {t:'insert', table:'line', id:'ll_real4', row:{id:'LL-R04', type:'Conversion', debit:'0.00', credit:'77.92', transaction_id:'a0157dff…8bf035f7', ledger_account_id:'ACC-USD-LIAB', business_id:NA, sequence:NA, created:'24 Aug 2026, 12:36 PM'}}] },
-    { section:6, real:true, hyp:true,
-      desc:"Mark the conversion settled. No lock to release.",
-      sql:"UPDATE transaction SET status='COMPLETED', updated='24 Aug 2026, 12:36 PM', settled_at='24 Aug 2026, 12:36 PM', settlement_status='SETTLED'\nWHERE id='a0157dff…8bf035f7';",
-      ops:[{t:'update', table:'txn', id:'txn_conv', patch:{status:'COMPLETED', updated:'24 Aug 2026, 12:36 PM', settled_at:'24 Aug 2026, 12:36 PM', settlement_status:'SETTLED'}}] },
-    { section:6, real:true,
-      desc:"Real evidence: same ~1 minute create-to-settle timing as the current-state walkthrough — this migration doesn't change conversion's throughput, which was already fast. It removes the presumed lock windows around it, if they existed at all.",
-      sql:"-- SETTLEMENT DATE − CREATED ≈ 1 minute", ops:[] },
-
-    { section:7, desc:"", sql:"", ops:[] }
+    { section:6, desc:"", sql:"", ops:[] }
   ];
 
   // ============================================================
@@ -910,7 +860,7 @@
       sections: makeSections(),
       steps: CURRENT_STEPS,
       tableDefs: CURRENT_TABLE_DEFS,
-      foot:'Sections 1&ndash;4 are illustrative sample data; sections 5&ndash;6 are real values read from a live dashboard.xendit.co account. Steps marked <span class="hyp-flag" style="margin:0 2px;">presumed</span> follow the confirmed lock pattern but weren\'t directly observed.'
+      foot:'Sections 1&ndash;4 are illustrative sample data; section 5 is real values read from a live dashboard.xendit.co account (Conversion is out of scope for this walkthrough). Steps marked <span class="hyp-flag" style="margin:0 2px;">presumed</span> follow the confirmed lock pattern but weren\'t directly observed.'
     },
     proposed: {
       label:'Proposed (target state)',
@@ -918,7 +868,7 @@
       sections: makeSections(),
       steps: PROPOSED_STEPS,
       tableDefs: PROPOSED_TABLE_DEFS,
-      foot:'Same accounts, transactions and real SGD/USD numbers as the current-state walkthrough, replayed under the proposed schema so the DB-level difference is directly comparable. Sections 5&ndash;6 replay real dashboard values through a design that doesn\'t exist in production yet &mdash; marked <span class="hyp-flag" style="margin:0 2px;">hypothetical</span> for that reason, not because the underlying numbers are made up.'
+      foot:'Same accounts, transactions and real SGD numbers as the current-state walkthrough, replayed under the proposed schema so the DB-level difference is directly comparable (Conversion is out of scope for this walkthrough). Section 5 replays real dashboard values through a design that doesn\'t exist in production yet &mdash; marked <span class="hyp-flag" style="margin:0 2px;">hypothetical</span> for that reason, not because the underlying numbers are made up.'
     }
   };
 
@@ -1130,17 +1080,15 @@
     var html;
     if (mode === 'current'){
       html = '<div class="flow-row"><span class="flow-tag overview">Overview</span><span class="mode-pill current">Current (as-is)</span></div>' +
-        '<h2>Four flows, four very different lock footprints</h2>' +
-        '<div class="step-desc">Same underlying mechanism — lock the account, write a line, unlock — but the shape of the contention is completely different per flow. Widths below are conceptual, not to time scale.</div>' +
+        '<h2>Three flows, three very different lock footprints</h2>' +
+        '<div class="step-desc">Same underlying mechanism — lock the account, write a line, unlock — but the shape of the contention is completely different per flow. Widths below are conceptual, not to time scale. (Conversion is out of scope for this walkthrough.)</div>' +
         '<div class="summary-grid">' +
         '<div class="flow-timeline"><div class="head"><span class="name">Money-In &middot; ACC-IDR-LIAB</span><span class="stat tab-nums">T+1-ish batch — real pileup observed</span></div>' +
           '<div class="track">' + seg('Create — unlocked','') + seg('T+1 batch — LOCK, per txn, back to back','locked') + '</div></div>' +
         '<div class="flow-timeline"><div class="head"><span class="name">Money-Out &middot; ACC-PHP-LIAB</span><span class="stat tab-nums">2 lock windows &middot; ~6 min real</span></div>' +
           '<div class="track">' + seg('Create — LOCK #1','locked') + seg('in flight — unlocked','') + seg('Settle — LOCK #2','locked') + '</div></div>' +
-        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real)</span><span class="stat tab-nums">same account as parent, presumed lock</span></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real)</span><span class="stat tab-nums">same account as parent, presumed lock, no transaction row</span></div>' +
           '<div class="track">' + seg('Parent txn — presumed LOCK','hyplocked') + seg('+1 min: Fee line — presumed LOCK','hyplocked') + '</div></div>' +
-        '<div class="flow-timeline"><div class="head"><span class="name">Conversion &middot; ACC-SGD/USD-LIAB (real)</span><span class="stat tab-nums">~1 min real — fastest of all four</span></div>' +
-          '<div class="track">' + seg('Create + Settle — presumed LOCK','hyplocked') + '</div></div>' +
         '</div>' +
         '<div class="step-desc" style="margin-top:4px;"><b>What the proposed design removes — switch the toggle above to see it:</b></div>' +
         '<div class="fix-list">' +
@@ -1151,23 +1099,21 @@
         '</div>';
     } else {
       html = '<div class="flow-row"><span class="flow-tag overview">Overview</span><span class="mode-pill proposed">Proposed (target state)</span></div>' +
-        '<h2>Same four flows, zero lock windows</h2>' +
-        '<div class="step-desc">Every posting above ran as a single atomic statement against ledger_balance, plus an append-only insert into ledger_line. No FOR UPDATE lock was acquired anywhere in this walkthrough. Widths below are conceptual, not to time scale.</div>' +
+        '<h2>Same three flows, zero lock windows</h2>' +
+        '<div class="step-desc">Every posting above ran as a single atomic statement against ledger_balance, plus an append-only insert into ledger_line. No FOR UPDATE lock was acquired anywhere in this walkthrough. Widths below are conceptual, not to time scale. (Conversion is out of scope for this walkthrough.)</div>' +
         '<div class="summary-grid">' +
         '<div class="flow-timeline"><div class="head"><span class="name">Money-In &middot; ACC-IDR-LIAB</span><span class="stat tab-nums">batch/micro-batch — no serialization</span></div>' +
           '<div class="track">' + seg('Create — unlocked','') + seg('Settle — atomic UPDATE per txn, no lock','atomicseg') + '</div></div>' +
         '<div class="flow-timeline"><div class="head"><span class="name">Money-Out &middot; ACC-PHP-LIAB</span><span class="stat tab-nums">2 atomic statements &middot; ~6 min real business timing unchanged</span></div>' +
           '<div class="track">' + seg('Create — atomic conditional UPDATE','atomicseg') + seg('in flight — unlocked','') + seg('Settle — atomic UPDATE + append','atomicseg') + '</div></div>' +
-        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real, replayed)</span><span class="stat tab-nums">same account as parent, atomic update</span></div>' +
+        '<div class="flow-timeline"><div class="head"><span class="name">Fee &middot; ACC-SGD-LIAB (real, replayed)</span><span class="stat tab-nums">same account as parent, atomic update, no transaction row</span></div>' +
           '<div class="track">' + seg('Parent txn — atomic UPDATE','atomicseg') + seg('+1 min: Fee line — atomic UPDATE','atomicseg') + '</div></div>' +
-        '<div class="flow-timeline"><div class="head"><span class="name">Conversion &middot; ACC-SGD/USD-LIAB (real, replayed)</span><span class="stat tab-nums">~1 min real &mdash; unchanged, already fast</span></div>' +
-          '<div class="track">' + seg('Create + Settle — atomic UPDATE','atomicseg') + '</div></div>' +
         '</div>' +
         '<div class="step-desc" style="margin-top:4px;"><b>What stayed the same:</b></div>' +
         '<div class="fix-list">' +
           '<div class="fix-item"><span class="icon">=</span><div class="body"><b>ledger_account and transaction are untouched</b><p>The fix is isolated to the balance-computation path, not the account or transaction shape.</p></div></div>' +
-          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>fees is unchanged</b><p>Same columns, same open question about its own lifecycle (nullable ledger_line_id) &mdash; not addressed by this migration.</p></div></div>' +
-          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>Real business timing is unchanged</b><p>Money-Out&rsquo;s ~6 minutes and Conversion&rsquo;s ~1 minute create-to-settle are unaffected &mdash; this fix removes lock contention, not the underlying settlement latency.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>fees is unchanged</b><p>Same columns, same open question about its own lifecycle (nullable ledger_line_id) &mdash; not addressed by this migration. Confirmed: it never gets its own transaction row, in either schema version.</p></div></div>' +
+          '<div class="fix-item"><span class="icon">=</span><div class="body"><b>Real business timing is unchanged</b><p>Money-Out&rsquo;s ~6 minutes create-to-settle is unaffected &mdash; this fix removes lock contention, not the underlying settlement latency.</p></div></div>' +
           '<div class="fix-item"><span class="icon">&#9888;</span><div class="body"><b>Not shown here: reporting/CDC split</b><p>This walkthrough is scoped to the OLTP write path. The reporting-side fix (CDC into a dedicated analytics store) is a separate concern &mdash; see architecture-diagram.md section 2b.</p></div></div>' +
         '</div>';
     }
@@ -1181,7 +1127,7 @@
     renderProgress();
     var stage = document.getElementById('stage');
     stage.innerHTML = '';
-    if (STEPS[cur].section === 7){
+    if (STEPS[cur].section === 6){
       renderSummaryView(stage);
     } else {
       renderOperationView(stage);
