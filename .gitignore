@@ -1,0 +1,3 @@
+# Local deploy history (used by the deploy dashboard) — machine-local state
+.deploy-history.json
+.last-failure.json
